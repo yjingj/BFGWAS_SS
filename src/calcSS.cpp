@@ -109,8 +109,8 @@ void CALCSS::GetSS(uchar **X, gsl_vector *y, vector< vector<double> > &LD, vecto
         U_STAT.push_back(xty); // score statistic 
         v2 = pheno_var * xtx_i ;
         SQRT_V_STAT.push_back( sqrt(v2) ); // score statistic standard deviation
-        chisq_i = ((double)ni_test)*(log(yty)-log(yty-xty*xty/xtx_i)); // LRT statistic
-        // chisq_i = xty * xty / v2; // Score test statistic
+        // chisq_i = ((double)ni_test)*(log(yty)-log(yty-xty*xty/xtx_i)); // LRT statistic
+        chisq_i = xty * xty / v2; // Score test statistic
         pval.push_back( gsl_cdf_chisq_Q (chisq_i, 1.0) ); // pvalue needed for BVSRM
         pos_ChisqTest.push_back( make_pair(i, chisq_i) ) ; // pos_ChisqTest needed for BVSRM
 

@@ -2153,6 +2153,9 @@ void BVSRM::MCMC (uchar **X, const gsl_vector *y, bool original_method) {
     //Save temp EM results
     WriteHyptemp(LnPost, em_gamma);
     WriteParam(beta_g, snp_pos, pos_loglr, Z_scores, pval_lrt);
+    //# include a function to calculate and save fitted phenotype values
+
+
     WriteMCMC(snps_mcmc); // save all active SNPs from MCMC
     
    // gsl_matrix_free(Result_hyp);
@@ -3154,8 +3157,10 @@ void BVSRM::MCMC_SS (const vector< vector<double> > &LD, const vector<double> &X
     //Save temp EM results
     //cout << "write hyptemp ... \n";
     WriteHyptemp(LnPost, em_gamma);
+
     //cout << "write paramtemp ... \n";
     WriteParam_SS(beta_g, snp_pos, pos_ChisqTest, pval_vec);
+
     //cout << "write snps_mcmc ... \n";
     //cout << "snps_mcmc length: " << snps_mcmc.size() << endl;
     WriteMCMC(snps_mcmc); // save all active SNPs from MCMC

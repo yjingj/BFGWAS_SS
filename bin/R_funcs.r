@@ -3,6 +3,12 @@ options(stringsAsFactors=F)
 library(data.table)
 library(ggplot2)
 
+##########
+require(scales)
+cubic_trans = function() trans_new("cubic", function(x) x^(1/3), function(x) x^(3))
+
+
+
 LoadEMdata <- function(filename, header = FALSE){
     paramdata = fread(filename, sep = "\t", header = header)
     setnames(paramdata, c("chr", "bp", "ID", "ref", "alt", "maf", "func", "pi", "beta", "SE_beta", "Chisq", "pval_chisq", "rank"))

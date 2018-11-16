@@ -815,6 +815,12 @@ void BFGWAS::BatchRun (PARAM &cPar)
 		gsl_matrix_free (W);
 	} 
 
+	//Calculate Predicted phenotype value per genome-block
+	// call functions to read parameter values from *.paramtemp files
+	// read individual level genotype data file
+	// call functions to calculate predicted phenotype values
+	// write predicted phenotype values
+
 	
 	//BVSRM
 	if (cPar.a_mode==11) {
