@@ -825,7 +825,7 @@ void BFGWAS::BatchRun (PARAM &cPar)
 	//BVSRM
 	if (cPar.a_mode==11) {
         // LD and U_STAT are defined in cPar
-        //perform BSVRM analysis
+        //perform BVSRM analysis
         BVSRM cBvsrm;
 
         if(! cPar.inputSS){
@@ -900,7 +900,7 @@ void BFGWAS::BatchRun (PARAM &cPar)
 
         time_start=clock();
         cBvsrm.ns_neib = 2 * cBvsrm.win + 1;
-        cBvsrm.MCMC_SS(cPar.LD, cPar.U_STAT);
+        cBvsrm.MCMC_SS(cPar.LD, cPar.U_STAT); // Run the MCMC algorithm
         cPar.time_opt=(clock()-time_start)/(double(CLOCKS_PER_SEC)*60.0);
         cout << "\nMCMC_SS costs " << cPar.time_opt << " minutes \n";
 
