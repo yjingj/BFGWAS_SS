@@ -1,167 +1,172 @@
 ######################### Test on 1KG Example Data
-bfGWAS_SS_dir="/home/jyang/GIT/bfGWAS_SS"
-test_dir="/home/jyang/GIT/bfGWAS_SS/1KG_example/Test_Wkdir"
-cd $test_dir
+############## Run BFGWAS_SS with multiple genome block
+# Specify BFGWAS tool directory and working directory with writing access
+BFGWAS_SS_dir="/home/jyang/GIT/BFGWAS_SS"
+wkdir="/home/jyang/GIT/BFGWAS_SS/1KG_example/Test_Wkdir"
 
-## Using Old bfGWAS
-time ~/GIT/bfGWAS/bin/Estep_mcmc \
--vcf ${bfGWAS_SS_dir}/1KG_example/ExData/vcfs/CFH_REGION_1KG.vcf.gz \
--p ${bfGWAS_SS_dir}/1KG_example/ExData/phenoAMD_1KG.txt \
--a ${bfGWAS_SS_dir}/1KG_example/ExData/annos/Anno_CFH_REGION_1KG.gz \
--fcode ${bfGWAS_SS_dir}/1KG_example/ExData/AnnoCode6.txt \
--hfile ${bfGWAS_SS_dir}/1KG_example/Test_Wkdir/hypval.current \
--GTfield GT -bvsrm -maf 0.005 -win 100 -smin 0 -smax 5 -w 5 -s 10 \
--o CFH_REGION_1KG -initype 3 -seed 2017 > ${test_dir}/test_old.output.txt &
+# file with all genome block file name heads
+filehead=${BFGWAS_SS_dir}/1KG_example/ExData/fileheads_4region.txt
 
-real    8m36.933s
-user    8m33.808s
-sys     0m2.610s
+# genotype directory
+geno_dir=${BFGWAS_SS_dir}/1KG_example/ExData/vcfs
+# phenotype directory
+pheno=${BFGWAS_SS_dir}/1KG_example/ExData/phenoAMD_1KG.txt
 
-## Save Annotation file in the format of chr/pos/id/ref/alt/func
-~/Scripts/Shell_Scripts/ConvertAnnoFile.sh ${bfGWAS_SS_dir}/1KG_example/ExData/vcfs ${bfGWAS_SS_dir}/1KG_example/ExData/annos CFH_REGION_1KG
+####### First generate single variant GWAS score statistic and LD files
+# LD coefficient directory
+LDdir=${wkdir}/LDcorr
+# Score statistics directory
+Score_dir=${wkdir}/ScoreStat
+LDwindow=500000
 
-### Run bfGWAS_SS with individual level data and new ANNO file
-time ${bfGWAS_SS_dir}/bin/Estep_mcmc \
--vcf ${bfGWAS_SS_dir}/1KG_example/ExData/vcfs/CFH_REGION_1KG.vcf.gz \
--p ${bfGWAS_SS_dir}/1KG_example/ExData/phenoAMD_1KG.txt \
--a ${bfGWAS_SS_dir}/1KG_example/ExData/annos/Anno_CFH_REGION_1KG.txt.gz \
--fcode ${bfGWAS_SS_dir}/1KG_example/ExData/AnnoCode6.txt \
--hfile ${bfGWAS_SS_dir}/1KG_example/Test_Wkdir/hypval.current \
--GTfield GT -bvsrm -maf 0.005 -win 100 -smin 0 -smax 5 -w 50000 -s 100000 \
--o CFH_REGION_1KG_SS -initype 3 -LDwindow 500000 -seed 2017 \
--saveSS \
-> ${test_dir}/test_SS.output.txt &
-
-real    2m1.698s
-user    2m0.211s
-sys     0m0.925s
-
-### Run bfGWAS_SS with Summary data
-
-time ${bfGWAS_SS_dir}/bin/Estep_mcmc \
--score ${bfGWAS_SS_dir}/1KG_example/Test_Wkdir/output/CFH_REGION_1KG_SS.score.txt \
--cov ${bfGWAS_SS_dir}/1KG_example/Test_Wkdir/output/CFH_REGION_1KG_SS.cov.txt \
--n 2504 -rv 0.250064 -inputSS \
--a ${bfGWAS_SS_dir}/1KG_example/ExData/annos/Anno_CFH_REGION_1KG.txt.gz \
--fcode ${bfGWAS_SS_dir}/1KG_example/ExData/AnnoCode6.txt \
--hfile ${bfGWAS_SS_dir}/1KG_example/Test_Wkdir/hypval.current \
--GTfield GT -bvsrm -maf 0.005 -win 100 -smin 0 -smax 5 -w 50000 -s 100000 \
--o CFH_REGION_1KG_ReadSS -initype 3 -seed 2017 > ${test_dir}/ReadSS_test.output.txt &
-
-real    0m8.684s
-user    0m7.956s
-sys     0m0.277s
+cd $wkdir
+${BFGWAS_SS_dir}/bin/GetRefLD.sh --wkdir ${wkdir} \
+--toolE ${BFGWAS_SS_dir}/bin/Estep_mcmc \
+--geno_dir ${geno_dir} --filehead ${filehead} --pheno ${pheno} \
+--GTfield GT --genofile_type vcf --maf 0 --LDwindow ${LDwindow}  \
+--Score_dir ${Score_dir} --LDdir ${LDdir} &
 
 
-######################### Test on Irwin's data
+########## Generate make file
+N=2504 ; # sample size
+pheno_var=0.250064; # phenotype variance
+maf=0.005
+em=3; # EM steps
+Nburnin=100; # Burn-in iterations in MCMC
+Nmcmc=100; # MCMC iteration number
+mkfile=${wkdir}/BFGWAS.mk
 
-bfGWAS_SS_dir="/net/fantasia/home/yjingj/GIT/bfGWAS_SS"
-test_dir="/net/fantasia/home/yjingj/GIT/bfGWAS_SS/1KG_example/Test_Wkdir"
+anno_dir=${BFGWAS_SS_dir}/1KG_example/ExData/annos
+anno_code=${BFGWAS_SS_dir}/1KG_example/ExData/AnnoCode6.txt
+hfile=${BFGWAS_SS_dir}/1KG_example/ExData/InitValues6.txt
 
-## Convert Annotation file
-zcat ${test_dir}/amd_chr1_test.vcf.gz | awk 'NF>10{print $1"\t"$2"\t"$4"\t"$5}' > Anno_amd_chr1_test.temp
-zcat Anno_amd_chr1_test.gz | cut -f4 > Anno_amd_chr1_test.tempFunc
-paste Anno_amd_chr1_test.temp Anno_amd_chr1_test.tempFunc > Anno_amd_chr1_test.txt
+cd $wkdir
+${BFGWAS_SS_dir}/bin/gen_mkf.pl \
+--wkdir ${wkdir} --tool_dir ${BFGWAS_SS_dir} \
+--LDdir ${LDdir} --Score_dir ${Score_dir} \
+--filehead ${filehead} --anno_dir ${anno_dir} --anno_code ${anno_code} \
+--hfile ${hfile} --pv ${pheno_var} --Nsample ${N} --maf ${maf} \
+--Nburnin ${Nburnin} --Nmcmc ${Nmcmc} --NmcmcLast ${Nmcmc} \
+--em ${em} --mf ${mkfile}
 
+######### Submit the job for running the makefile
+j=4 # Number of cores to request
+qsub -q b.q -j y -pe smp ${j} -wd ${wkdir} -N BFGWAS ${BFGWAS_SS_dir}/bin/run_make.sh --wkdir ${wkdir} --mkfile ${mkfile} --njob ${j}
 
-## Read SS
-time ${bfGWAS_SS_dir}/bin/Estep_mcmc \
--score ${test_dir}/output/amd_test_SS.score.txt.gz \
--cov ${test_dir}/output/amd_test_SS.cov.txt.gz \
--n 33976 -rv 1 -inputSS \
--a ${test_dir}/Anno_amd_chr1_test.txt \
--fcode /net/wonderland/home/yjingj/AMD/AnnoPartition/FuncAnno5.txt \
--hfile /net/wonderland/home/yjingj/AMD/AMD_Results/GVS_anno5/hypval.current \
--bvsrm -rmin 1 -rmax 1 -smin 0 -smax 10 -win 100 \
--o amd_test_ReadSS -w 50000 -s 100000 -initype 3 -seed 2017 \
-> ${test_dir}/AMDtest_ReadSS.output.txt &
+######### update the following 09/10/2021 ####
+#########  See example Rscript for Analyzing BFGWAS results
+/home/jyang/ResearchProjects/ROSMAP_GWAS/BFGWAS/Scripts/BFGWAS.r
 
-real    0m1.789s
-user    0m1.203s
-sys     0m0.092s
+##### perl script is used to generate makefile #############
 
+${BFGWAS_dir}/bin/gen_mkf.pl \
+-w ${wkdir} \
+--Estep ${BFGWAS_dir}/bin/Estep_mcmc \
+--ad ${BFGWAS_SS_dir}/1KG_example/ExData/annos \
+--geno vcf --ac ${BFGWAS_SS_dir}/1KG_example/ExData/AnnoCode6.txt  \
+--gd ${BFGWAS_SS_dir}/1KG_example/ExData/vcfs \
+--pheno ${BFGWAS_SS_dir}/1KG_example/ExData/phenoAMD_1KG.txt \
+--hyp ${BFGWAS_SS_dir}/1KG_example/ExData/InitValues6.txt \
+-f ${BFGWAS_SS_dir}/1KG_example/ExData/fileheads_4region.txt \
+--rs ${BFGWAS_dir}/bin/Mstep.r \
+-G GT --maf 0.005 --smax 10 -b 10000 -N 10000 --NL 10000 \
+--em 3 -j testjob -l local \
+--mf ${wkdir}/Test_BFGWAS.mk
 
-###### profiling new model for AMD all genotype data
+## Run Makefile with 4 parallel jobs
+make -k -C ${wkdir} -f ${wkdir}/Test_BFGWAS.mk -j 10 > ${wkdir}/make.output 2> ${wkdir}/make.err  &
 
-gprof -p -b ${GMGIT}/bin/gemma_newmodel_pg gmon.out > AMD_allgeno_gprof.txt
-gprof -p -b ${GMGIT}/bin/gemma_newmodel_pg gmon.out > AMD_test_gprof.txt
-
-###### Convert all AMD Anno files
-
-cat /net/wonderland/home/yjingj/Data/AMD/GVS_Annotation/vcf_filehead_withSubLoci.txt | while read file
-do
-	echo $file
-	~/Scripts/Shell_Script/ConvertAnnoFile.sh /net/wonderland/home/yjingj/Data/AMD_Imputed_Filtered/${file}.vcf.gz /net/wonderland/home/yjingj/Data/AMD/GVS_Annotation ${file}
-done
-
-
-############ Subset 1KG data for AMD Locus CHR19.005000001.007500000
-# LocusZoom: select_chr=19; bp_start=6218146; bp_end=7218146
-
-zcat /net/fantasia/home/yjingj/METAL/1KG/1KG_phase3_20130502/ALL.chr19.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz | head -n 300 | grep "#" > /net/fantasia/home/yjingj/GIT/bfGWAS_SS/1KG_example/ExData/vcfs/1KG_CHR19.005000001.007500000.vcf
-
-tabix /net/fantasia/home/yjingj/METAL/1KG/1KG_phase3_20130502/ALL.chr19.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz 19:5000001-7500000  >> /net/fantasia/home/yjingj/GIT/bfGWAS_SS/1KG_example/ExData/vcfs/1KG_CHR19.005000001.007500000.vcf
-
-bgzip 1KG_CHR19.005000001.007500000.vcf
-
-# filter rare variants
-bcftools view -i 'EUR_AF[0]>0.01 & EUR_AF[0]<0.99' 1KG_CHR19.005000001.007500000.vcf.gz | bgzip > 1KG_CHR19.005000001.007500000.sub.vcf.gz
-
-grep EUR ~/METAL/1KG/1KG_phase3_20130502/integrated_call_samples_v3.20130502.ALL.panel | awk '{print $1}' > ~/GIT/bfGWAS_SS/1KG_example/ExData/vcfs/1KG_EUR_SampleID.txt
-
-############# Generate SS data
-time ${bfGWAS_SS_dir}/bin/Estep_mcmc \
--vcf ~/GIT/bfGWAS_SS/1KG_example/ExData/vcfs/1KG_CHR19.005000001.007500000.vcf.gz \
--p ~/GIT/bfGWAS_SS/1KG_example/ExData/vcfs/1KG_EUR.NullPheno.txt \
--GTfield GT -maf 0.01 -o 1KG_CHR19.005000001.007500000_1M -rv 1 \
--LDwindow 1000000 -saveSS -zipSS > ${test_dir}/1KG_CHR19.005000001.007500000_1M.output.txt &
+## Clean all jobs when you need rerun everything
+# make -f ${wkdir}/Test_BFGWAS.mk clean
 
 
-time ${bfGWAS_SS_dir}/bin/Estep_mcmc \
--vcf ~/GIT/bfGWAS_SS/1KG_example/ExData/vcfs/1KG_CHR19.005000001.007500000.vcf.gz \
--p ~/GIT/bfGWAS_SS/1KG_example/ExData/vcfs/1KG_EUR.NullPheno.txt \
--GTfield GT -maf 0.01 -o 1KG_CHR19.005000001.007500000_2M -rv 1 \
--LDwindow 2000000 -saveSS -zipSS > ${test_dir}/1KG_CHR19.005000001.007500000_2M.output.txt &
+#################
+############## Output under ${wkdir} ###################
 
-############ Use 1KG reference data
-# file=CHR19.005000001.007500000_FinalRelease
+######### /OUT/ : saves all screen outputs
 
-time ${bfGWAS_SS_dir}/bin/Estep_mcmc \
--score ${test_dir}/output/${file}_SS.score.txt.gz \
--cov ${test_dir}/output/1KG_CHR19.005000001.007500000_1M.cov.txt.gz \
--n 33976 -rv 1 -inputSS -refLD -printLD \
--a /net/wonderland/home/yjingj/Data/AMD/GVS_Annotation/Anno_${file}.txt.gz \
--fcode /net/wonderland/home/yjingj/AMD/AnnoPartition/FuncAnno5.txt \
--hfile /net/wonderland/home/yjingj/AMD/AMD_Results/GVS_anno5/hypval.current \
--bvsrm -rmin 1 -rmax 1 -smin 0 -smax 10 -win 100 \
--o ${file}_RefLD_1M -w 50000 -s 100000 -initype 3 -seed 2017 \
-> ${test_dir}/amd_${file}_RefLD_1M.output.txt &
+######### /output/ : saves all MCMC output from E-step / will be overridden by the next E-step
+# filehead.log.txt contains log file for MCMC
+# filehead.paramtemp contains estimates for each variant with columns "ID", "chr", "bp", "ref", "alt", "maf", "func", "beta", "pi", "Zscore", "SE_beta", "LRT", "pval_LRT", "rank";
 
+# "ID" : variant ID
+# "chr" : chromosome number
+# "bp" : base pair position
+# "REF" : reference allel
+# "ALT" : alternative allel
+# "maf" : MAF of the variant
+# "func" : annotation code used in --ac FuncAnno4.txt
+# "beta" : effect size estimate
+# "pi" : causal probability for each variant
+# "Zscore" : Zscore by single likelihood ratio test
+# "SE_beta" : from single likelihood ratio test
+# "LRT" : test statistic by single likelihood ratio test
+# "pval_LRT" : pvalue by single likelihood ratio test
+# "rank" : rank within block based on p-values, 0:top significant variant by pvalue
 
-time ${bfGWAS_SS_dir}/bin/Estep_mcmc \
--score ${test_dir}/output/${file}_SS.score.txt.gz \
--cov ${test_dir}/output/1KG_CHR19.005000001.007500000_2M.cov.txt.gz \
--n 33976 -rv 1 -inputSS -refLD -printLD \
--a /net/wonderland/home/yjingj/Data/AMD/GVS_Annotation/Anno_${file}.txt.gz \
--fcode /net/wonderland/home/yjingj/AMD/AnnoPartition/FuncAnno5.txt \
--hfile /net/wonderland/home/yjingj/AMD/AMD_Results/GVS_anno5/hypval.current \
--bvsrm -rmin 1 -rmax 1 -smin 0 -smax 10 -win 100 \
--o ${file}_RefLD_2M -w 50000 -s 100000 -initype 3 -seed 2017 \
-> ${test_dir}/amd_${file}_RefLD_2M.output.txt &
+# function LoadEMdata() in bin/R_funcs.r can be used to read this paramtemp file into R, requiring library "data.table" and "ggplot2"
+
+# filehead.hyptemp contains estimates required for M-step
+# filehead.mcmc contains all included variants (id:chr:pos:ref:alt, seperated by ";") in the M-step, one row per MCMC iteration (can be used for calculating regional posterior inclusion probabilities)
 
 
-################## Save Genotype
+######### /slurm_err/ : saves all error file for slurm jobs
 
-time ${bfGWAS_SS_dir}/bin/Estep_mcmc \
--vcf ${bfGWAS_SS_dir}/1KG_example/ExData/vcfs/CFH_REGION_1KG.vcf.gz \
--p ${bfGWAS_SS_dir}/1KG_example/ExData/phenoAMD_1KG.txt \
--a ${bfGWAS_SS_dir}/1KG_example/ExData/annos/Anno_CFH_REGION_1KG.gz \
--fcode ${bfGWAS_SS_dir}/1KG_example/ExData/AnnoCode6.txt \
--hfile ${bfGWAS_SS_dir}/1KG_example/Test_Wkdir/hypval.current \
--GTfield GT -bvsrm -maf 0.005 -win 100 -smin 0 -smax 5 -w 10 -s 10 \
--o CFH_REGION_1KG -saveGeno
+
+###### under folder /Eoutput/ : main results ########
+# let i denote the ith EM iteration
+# log${i}.txt contains all log files for all blocks
+# hyptemp${i}.txt contains all hyptemp files for all blocks
+# paramtemp${i}.txt contains all paramtemp files for all blocks
+# EM_result.txt contains all hyper parameter estimates with columns "EM_iter_#", "PVE/heritability", "likelihood", every 4 of the following columns denotes the "causal probability" "causal probability SE" "effect size variance" "effect size variance SE" for group 0, 1, 2, ...
+# R function LoadEMhyp() in bin/R_funcs.r can be used to read EM_result.txt file
+# R function CItable() in bin/R_funcs.r can be used to convert one row of EM_result.txt to a table of annotations
+
+
+############ example R code for analysis
+# see "/1KG_example/AnalyzeResults/Analysis.r" for details of loading data and make plots
 
 
 
+### Test Run `/bin/Estep_mcmc` with individual level data and ANNO file for the genome block of `CFH_REGION_1KG.vcf.gz`
+filehead=CFH_REGION_1KG
+
+#### change `-GTfield` argument to the dosage field name if imputed genotype data are used
+#### Save single variant test GWAS summary data and LD  with flag `-saveSS`
+${BFGWAS_SS_dir}/bin/Estep_mcmc \
+-vcf ${BFGWAS_SS_dir}/1KG_example/ExData/vcfs/${filehead}.vcf.gz \
+-p ${BFGWAS_SS_dir}/1KG_example/ExData/phenoAMD_1KG.txt \
+-a ${BFGWAS_SS_dir}/1KG_example/ExData/annos/Anno_${filehead}.txt.gz \
+-fcode ${BFGWAS_SS_dir}/1KG_example/ExData/AnnoCode6.txt \
+-hfile ${BFGWAS_SS_dir}/1KG_example/ExData/InitValues6.txt \
+-GTfield GT -bvsrm -maf 0.005 -win 100 -smin 0 -smax 10 -w 10000 -s 100000 \
+-o ${filehead} -initype 3 -LDwindow 500000 -seed 2017 \
+-saveSS -zipSS > ${wkdir}/${filehead}_indv.output.txt &
+
+############# Command to Generate single variant GWAS Summary Stat and LD files
+filehead=C2_REGION_1KG
+${BFGWAS_SS_dir}/bin/Estep_mcmc \
+-vcf ${BFGWAS_SS_dir}/1KG_example/ExData/vcfs/${filehead}.vcf.gz \
+-p ${BFGWAS_SS_dir}/1KG_example/ExData/phenoAMD_1KG.txt \
+-GTfield GT -maf 0.005 -o ${filehead} \
+-LDwindow 500000 -saveSS -zipSS > ${wkdir}/${filehead}_generateSS.output.txt &
 
 
+### Run `/bin/Estep_mcmc` with Summary data
+${BFGWAS_SS_dir}/bin/Estep_mcmc \
+-score ${BFGWAS_SS_dir}/1KG_example/Test_Wkdir/output/${filehead}.score.txt.gz \
+-LDcorr ${BFGWAS_SS_dir}/1KG_example/Test_Wkdir/output/${filehead}.LDcorr.txt.gz \
+-a ${BFGWAS_SS_dir}/1KG_example/ExData/annos/Anno_${filehead}.txt.gz \
+-fcode ${BFGWAS_SS_dir}/1KG_example/ExData/AnnoCode6.txt \
+-hfile ${BFGWAS_SS_dir}/1KG_example/ExData/InitValues6.txt \
+-n 2504 -pv 0.250064 -inputSS \
+-bvsrm -maf 0.005 -win 100 -smin 0 -smax 10 -w 10000 -s 100000 \
+-o ${filehead}_SS -initype 3 -seed 2017 > ${filehead}_SS.output.txt &
+
+
+################## Command to Save Genotype
+${BFGWAS_SS_dir}/bin/Estep_mcmc \
+-vcf ${BFGWAS_SS_dir}/1KG_example/ExData/vcfs/${filehead}.vcf.gz \
+-p ${BFGWAS_SS_dir}/1KG_example/ExData/phenoAMD_1KG.txt \
+-GTfield GT -maf 0 -o ${filehead} \
+-saveGeno > ${wkdir}/${filehead}_saveGeno.output.txt &
