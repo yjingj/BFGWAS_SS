@@ -2,12 +2,14 @@
 Makefile
 Changes.txt
 test_script~.sh
+make.out
+make.err
 
-./1KG_example/ExData/SimuAMD.r 
-./1KG_example/ExData/vcfs/causal*
-./1KG_example/ExData/vcfs/All*
-./1KG_example/ExData/vcfs/AMD*
-./1KG_example/ExData/SampleID.test.txt
+1KG_example/ExData/SimuAMD.r 
+1KG_example/ExData/vcfs/causal*
+1KG_example/ExData/vcfs/All*
+1KG_example/ExData/vcfs/AMD*
+1KG_example/ExData/SampleID.test.txt
 
 1KG_example/Test_Wkdir/*
 
