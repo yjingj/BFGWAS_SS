@@ -1,5 +1,6 @@
-######################### Test on 1KG Example Data
-############## Run BFGWAS_SS with multiple genome block
+#########################################################
+############## Test on 1KG Example Data
+############## Run BFGWAS_SS with 4 genome block
 #########################################################
 
 # Specify BFGWAS tool directory and working directory with writing access
