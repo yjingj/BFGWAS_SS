@@ -719,7 +719,7 @@ void BFGWAS::BatchRun (PARAM &cPar)
 		// X_Genotype SNPs in the same order as in VCF files
         gsl_matrix *X_Genotype = gsl_matrix_alloc (cPar.ns_test, cPar.ni_test);
         cPar.ReadGenotypes (X_Genotype, K);
-        cout << " success standardize vector ";
+        // cout << " success standardize vector ";
         cout << "Reading genotype data for the 2nd time costs " << (clock()-time_readfile)/(double(CLOCKS_PER_SEC)*60.0) << " mints\n";
         // initialize SS
         CALCSS SS;
@@ -828,7 +828,7 @@ void BFGWAS::BatchRun (PARAM &cPar)
 	        // X_Genotype has SNPs in rows in the same order as in genotype file; all genotype data are standardized;
         	gsl_matrix *X_Genotype = gsl_matrix_alloc (cPar.ns_test, cPar.ni_test);
         	cPar.ReadGenotypes (X_Genotype, K);
-			cout << " success standardize vector ";
+			// cout << " success standardize vector ";
 	        cout << "Load genotype data cost " << (clock()-time_readfile)/(double(CLOCKS_PER_SEC)*60.0) << " mints\n";
 	        gsl_matrix_free(K);
 
