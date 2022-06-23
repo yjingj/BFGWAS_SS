@@ -43,7 +43,7 @@ using namespace std;
 
 
 BFGWAS::BFGWAS(void):	
-version("bfGWAS_SS_MCMC"), date("06/15/2018"), year("2018")
+version("BFGWAS_SS_MCMC"), date("06/15/2022"), year("2022")
 {}
 
 void BFGWAS::PrintHeader (void)
@@ -53,7 +53,7 @@ void BFGWAS::PrintHeader (void)
 	cout<<"  Bayesian Functional GWAS --- MCMC (BFGWAS:MCMC) "<<endl;
 	cout<<"  Version "<<version<<", "<<date<<"                              "<<endl;
 	cout<<"  Visit                                                 "<<endl;
-	cout<<"     https://github.com/yjingj/bfGWAS_SS      "<<endl;
+	cout<<"     https://github.com/yjingj/BFGWAS_SS      "<<endl;
 	cout<<"  For Possible Updates                                  "<<endl;
 	cout<<"  (C) "<<year<<" Jingjing Yang              "<<endl;
 	cout<<"  GNU General Public License                            "<<endl;
@@ -103,7 +103,7 @@ void BFGWAS::PrintHelp(size_t option)
 {
 	if (option==0) {
 		cout<<endl; 
-		cout<<" bfGWAS_MCMC version "<<version<<", released on "<<date<<endl;
+		cout<<" BFGWAS_MCMC version "<<version<<", released on "<<date<<endl;
 		cout<<" implemented by Jingjing Yang"<<endl; 
 		cout<<endl;
 		cout<<" type ./Estep_mcmc -h [num] for detailed helps"<<endl;
@@ -160,7 +160,7 @@ void BFGWAS::PrintHelp(size_t option)
 		cout<<" -vcf        [filename]     "<<" Specify input VCF genotype file"<<endl<<endl;
 		cout<<" -GTfield        [keyword]     "<<" Specify whether to read for genotypes with keyword=GT, or read for dosage data keyword=EC from the VCF genotype file"<<endl<<endl;
 
-		cout << "-score     [filename]   " <<"Specify input summary score statistics file"<< endl <<endl;
+		cout << "-Zscore     [filename]   " <<"Specify input summary Zscore statistics file"<< endl <<endl;
 		cout << "-LDcorr     [filename]   " <<"Specify reference LD R2 info"<< endl <<endl;
 		cout << "-n     [sample size]   " <<"Specify sample size for using -inputSS "<< endl <<endl;
 		cout << "-pv     [phenotype variance]   " <<"Specify phenotype variance for using -inputSS"<< endl <<endl;
@@ -360,9 +360,9 @@ void BFGWAS::Assign(int argc, char ** argv, PARAM &cPar)
 			++i;
 			str.clear();
 			str.assign(argv[i]);
-			cPar.file_cov=str;
+			cPar.file_corr=str;
 		}
-		else if (strcmp(argv[i], "-score")==0) {
+		else if (strcmp(argv[i], "-Zscore")==0) {
 			if(argv[i+1] == NULL || argv[i+1][0] == '-') {continue;}
 			++i;
 			str.clear();
@@ -458,14 +458,6 @@ void BFGWAS::Assign(int argc, char ** argv, PARAM &cPar)
             str.clear();
             str.assign(argv[i]);
             cPar.vscale=atof(str.c_str());
-        }
-        else if (strcmp(argv[i], "-pv")==0) {
-            if(argv[i+1] == NULL || argv[i+1][0] == '-') {continue;}
-            ++i;
-            str.clear();
-            str.assign(argv[i]);
-            cPar.rv=atof(str.c_str()); // read phenotye variance
-            cPar.pheno_var = cPar.rv;
         }
         else if (strcmp(argv[i], "-n")==0) {
 			if(argv[i+1] == NULL || argv[i+1][0] == '-') {continue;}
@@ -602,7 +594,7 @@ void BFGWAS::Assign(int argc, char ** argv, PARAM &cPar)
 			cPar.win=atol(str.c_str());
 		}
         else if (strcmp(argv[i], "-initype")==0) {
-            if(argv[i+1] == NULL || argv[i+1][0] == '-') {cPar.iniType=3;continue;}
+            if(argv[i+1] == NULL || argv[i+1][0] == '-') {cPar.iniType=1;continue;}
             ++i;
             str.clear();
             str.assign(argv[i]);
@@ -633,9 +625,6 @@ void BFGWAS::Assign(int argc, char ** argv, PARAM &cPar)
         else if (strcmp(argv[i], "-scaleN")==0) {
             if(argv[i+1] == NULL || argv[i+1][0] == '-') {cPar.scaleN=1; }
         }
-        else if (strcmp(argv[i], "-usextxLD")==0) {
-            if(argv[i+1] == NULL || argv[i+1][0] == '-') {cPar.use_xtx_LD=1; }
-        }
         else if (strcmp(argv[i], "-printLD")==0) {
             if(argv[i+1] == NULL || argv[i+1][0] == '-') {cPar.printLD=1; }
         }
@@ -652,19 +641,15 @@ void BFGWAS::Assign(int argc, char ** argv, PARAM &cPar)
 }
 
 
-
 void BFGWAS::BatchRun (PARAM &cPar) 
 {
 	clock_t time_begin=clock(), time_start=clock();
-    
-    //cout << "create UcharTable ...\n";
-    //vector<pair<long long int, double> > UcharTable;
-    //CreateUcharTable(UcharTable);
     	
 	if(!cPar.inputSS){
-		//Read individual Files for the first time and filt variants
-		cPar.ReadFiles();
+		//Read individual Files for the first time and filter variants
+		cPar.ReadFiles(); // snpInfo created here for all SNPs
 		cout << "\nReading files first time cost " << (clock()-time_begin)/(double(CLOCKS_PER_SEC)*60.0) << " mints \n";
+		// cout << "snpInfo size : " << cPar.snpInfo.size() << endl;
 	}else{
 		//Read Sum Stat Files
 		cPar.ReadSS();
@@ -673,81 +658,81 @@ void BFGWAS::BatchRun (PARAM &cPar)
 	
 	if (cPar.error==true) {cout<<"error! fail to read files. "<<endl; return;}
     
-    cPar.CheckData(); // generate snp_pos
+    cPar.CheckData(); // generate snp_pos (sorted by SNP POS)
 	if (cPar.error==true) {cout<<"error! fail during check data. "<<endl; return;}
     cout << "Pass data check.\n" << endl;
     // cout << "ni_test = " << cPar.ni_test << "; ns_test = " << cPar.ns_test << endl << endl;
 
     //Save Genotype file 
     if(cPar.saveGeno){
-
 		//Save all genotypes
 		//cPar.indicator_snp.assign(cPar.ns_total, 1);
 		//cPar.indicator_idv.assign(cPar.ni_total, 1);
 		//cPar.ni_test = cPar.ni_total;
 		//cPar.ns_test = cPar.ns_total;
-		gsl_matrix *G=gsl_matrix_alloc (cPar.ni_test, cPar.ni_test);
+		gsl_matrix *K=gsl_matrix_alloc (cPar.ni_test, cPar.ni_test);// kinship matrix
 		gsl_vector *y=gsl_vector_alloc (cPar.ni_test); // phenotype
 		
 		//set phenotype vector y		
 		cout << "copy phenotype success ... "<< endl;
 		cPar.CopyPheno (y);
-
-		//if ( (!cPar.file_vcf.empty()) || (!cPar.file_geno.empty()) ) {
-        	// reorder y for reading vcf/genotype files
         cout << "Reorder phenotype if needed ... "<< endl;
         cPar.ReorderPheno(y); // setup VcfSampleID_test
     	//} // reorder y for reading vcf files
 
-        //read genotypes X 
+        //read genotypes X
         clock_t time_readfile = clock();
-        uchar ** X_Genotype = new uchar*[cPar.ns_test];
-        cPar.ReadGenotypes (X_Genotype, G); 
-            
+        //square matrix? I want use ns_test snps as number of columns
+        //sample/snp
+        gsl_matrix *X_Genotype = gsl_matrix_alloc (cPar.ns_test, cPar.ni_test);
+        cPar.ReadGenotypes (X_Genotype, K); // read genotype data for the second time
+        cout << "Read genotype data for the second time and standardize genotype data. \n";
         cout << "load genotype data cost " << (clock()-time_readfile)/(double(CLOCKS_PER_SEC)*60.0) << "mints\n";
         
+        //lei note here
         cPar.WriteGenotypes(X_Genotype);
-
-        gsl_matrix_free(G);
+        gsl_matrix_free(K);
         gsl_vector_free(y);
-
-        cout << "writting genotype file success ... "<< endl; 
+        cout << "Writting standardized genotype file success ... "<< endl;
         //exit(EXIT_SUCCESS);
     }
 
     //Save Summary Statistics in Raremetalworker format (LD correlation matrix of genotypes, beta, score statistics, maf) 
     if( (cPar.a_mode!=11) && (cPar.saveSS) ){
 
-		gsl_matrix *G=gsl_matrix_alloc (cPar.ni_test, cPar.ni_test);
+		gsl_matrix *K=gsl_matrix_alloc (cPar.ni_test, cPar.ni_test); // kinship matrix
 		gsl_vector *y=gsl_vector_alloc (cPar.ni_test); // phenotype
 		
 		//set phenotype vector y		
 		// cout << "Copy phenotype success ... "<< endl;
-		cPar.CopyPheno (y);
+		cPar.CopyPheno(y); // standardize phenotype here
 
-		//if ( (!cPar.file_vcf.empty()) || (!cPar.file_geno.empty()) ) {
+		if ( (!cPar.file_vcf.empty()) || (!cPar.file_geno.empty()) ) {
         	// reorder y for reading vcf/genotype files
         	cPar.ReorderPheno(y);
-    	//} 
+    	}
 
 		//read genotypes X 
         clock_t time_readfile = clock();
-        uchar ** X_Genotype = new uchar*[cPar.ns_test];
-        // genotype readed by the order in genotype files
-        cPar.ReadGenotypes (X_Genotype, G);    
-        cout << "Reading genotype data for the 2nd time costs " << (clock()-time_readfile)/(double(CLOCKS_PER_SEC)*60.0) << " mints\n";
 
+		//JY change: # SNPs in rows and #sampels in columns
+		// X_Genotype SNPs in the same order as in VCF files
+        gsl_matrix *X_Genotype = gsl_matrix_alloc (cPar.ns_test, cPar.ni_test);
+        cPar.ReadGenotypes (X_Genotype, K);
+        cout << " success standardize vector ";
+        cout << "Reading genotype data for the 2nd time costs " << (clock()-time_readfile)/(double(CLOCKS_PER_SEC)*60.0) << " mints\n";
         // initialize SS
         CALCSS SS;
         SS.CopyFromParam(cPar);
 
         // calculate LD matrix and effect-sizes from SVT
-       SS.GetSS(X_Genotype, y, cPar.LD, cPar.mbeta, cPar.mbeta_SE, cPar.U_STAT, cPar.SQRT_V_STAT, cPar.pval_vec, cPar.pos_ChisqTest, cPar.xtx_vec, cPar.snp_var_vec, cPar.ni_effect_vec);
+        //lei note here
+       	SS.GetSS(X_Genotype, y, cPar.LD, cPar.mbeta, cPar.Z_SCORE, cPar.pval_vec, cPar.pos_ChisqTest);
 
         // save summary statistics
-        SS.WriteSS(cPar.LD, cPar.mbeta, cPar.mbeta_SE, cPar.U_STAT, cPar.SQRT_V_STAT, cPar.pval_vec);
+        SS.WriteSS(cPar.LD, cPar.mbeta, cPar.Z_SCORE, cPar.pval_vec);
 
-        gsl_matrix_free(G);
+        gsl_matrix_free(K);
         gsl_vector_free(y);
 
         cout << "Writting Summary Statistics Success ... \n "<< endl; 
@@ -758,24 +743,24 @@ void BFGWAS::BatchRun (PARAM &cPar)
 	if (cPar.a_mode==21 || cPar.a_mode==22) {  
 		cout<<"Calculating Relatedness Matrix ... "<<endl;
 		
-		gsl_matrix *G=gsl_matrix_alloc (cPar.ni_test, cPar.ni_test);
+		gsl_matrix *K=gsl_matrix_alloc (cPar.ni_test, cPar.ni_test);
 		
 		time_start=clock();
-		cPar.CalcKin (G);
+		cPar.CalcKin (K);
 		cPar.time_G=(clock()-time_start)/(double(CLOCKS_PER_SEC)*60.0);
 		if (cPar.error==true) {cout<<"error! fail to calculate relatedness matrix. "<<endl; return;}
 		
 		if (cPar.a_mode==21) {
 			string file_str = "./output/" + cPar.file_out;
 			file_str += ".cXX.txt";
-			WriteMatrix (G, file_str);
+			WriteMatrix (K, file_str);
 		} else {
 			string file_str = "./output/" + cPar.file_out;
 			file_str += ".sXX.txt";
-			WriteMatrix (G, file_str);
+			WriteMatrix (K, file_str);
 		}
 		
-		gsl_matrix_free (G);
+		gsl_matrix_free (K);
 	}
 	
 	
@@ -824,66 +809,58 @@ void BFGWAS::BatchRun (PARAM &cPar)
 	
 	//BVSRM
 	if (cPar.a_mode==11) {
-        // LD and U_STAT are defined in cPar
-        //perform BVSRM analysis
+        // LD and mbeta are defined in cPar
+        //perform BSVRM analysis
         BVSRM cBvsrm;
 
         if(! cPar.inputSS){
-
         	gsl_vector *y=gsl_vector_alloc (cPar.ni_test); // phenotype
-			gsl_matrix *G=gsl_matrix_alloc (cPar.ni_test, cPar.ni_test); // kinship matrix
+			gsl_matrix *K=gsl_matrix_alloc (cPar.ni_test, cPar.ni_test); // kinship matrix
 			
 			// set phenotype vector y		
-			// cout << "copy phenotype success ... "<< endl;
-			cPar.CopyPheno (y); // pheno_mean is calculated here, and y is centered here
-			cout << "\npheno_mean = " << cPar.pheno_mean << "\n";
-	        
-	        //if ( (!cPar.file_vcf.empty()) || (!cPar.file_geno.empty()) ) {
-	        	// reorder y for reading vcf/genotype files
-	        	cPar.ReorderPheno(y);
-	    	//}
-	        cout << "first 10 phenotypes: "; PrintVector(y, 10);
+			cPar.CopyPheno (y); // phenotype is standardized here
+			cPar.pheno_var = 1.0;
+	        cPar.ReorderPheno(y);
+	        // cout << "first 10 phenotypes: "; PrintVector(y, 10);
 	        
 	        //read genotypes X 
 	        clock_t time_readfile = clock();
-	        uchar ** X_Genotype = new uchar*[cPar.ns_test];
-	        cPar.ReadGenotypes (X_Genotype, G); //load genotypes
+	        // X_Genotype has SNPs in rows in the same order as in genotype file; all genotype data are standardized;
+        	gsl_matrix *X_Genotype = gsl_matrix_alloc (cPar.ns_test, cPar.ni_test);
+        	cPar.ReadGenotypes (X_Genotype, K);
+			cout << " success standardize vector ";
 	        cout << "Load genotype data cost " << (clock()-time_readfile)/(double(CLOCKS_PER_SEC)*60.0) << " mints\n";
-	        gsl_matrix_free(G);
+	        gsl_matrix_free(K);
 
-	        // Calculate SS
+	        // Calculate SS : LD matrix (X'X/n), mbeta (x'y / x'x)
 	        CALCSS SS; // initialize 
 	        SS.CopyFromParam(cPar);
-
-	        // calculate LD matrix (X'X/n), mbeta (x'y / x'x), score statistics U_STAT (X'y), xtx_vec
-	        time_start=clock();	           
-        	SS.GetSS(X_Genotype, y, cPar.LD, cPar.mbeta, cPar.mbeta_SE, cPar.U_STAT, cPar.SQRT_V_STAT, cPar.pval_vec, cPar.pos_ChisqTest, cPar.xtx_vec, cPar.snp_var_vec, cPar.ni_effect_vec);
-        	cPar.pheno_var = SS.pheno_var;
+	        time_start=clock();
+	        //JY updated 06/15/2022
+        	SS.GetSS(X_Genotype, y, cPar.LD, cPar.mbeta, cPar.Z_SCORE, cPar.pval_vec, cPar.pos_ChisqTest);
         	cPar.trace_G = SS.trace_G;
-
 	        // calculate pheno_var; generate snp_pos
 	        cout << "Get SS costs " << (clock()-time_start)/(double(CLOCKS_PER_SEC)*60.0) << " minutes \n";
-
-	        // save summary statistics
+	        // save summary statistics; JY updated 06/15/2022
 	        if(cPar.saveSS){
 	        	time_start=clock();
-	        	SS.WriteSS(cPar.LD, cPar.mbeta, cPar.mbeta_SE, cPar.U_STAT, cPar.SQRT_V_STAT, cPar.pval_vec);
+	        	SS.WriteSS(cPar.LD, cPar.mbeta, cPar.Z_SCORE, cPar.pval_vec);
 	        	cout << "Write SS costs " << (clock()-time_start)/(double(CLOCKS_PER_SEC)*60.0) << " minutes \n";
 	        }
-	        cBvsrm.CopyFromSS(SS);
 
+	        cBvsrm.CopyFromSS(SS);
 	        // Using individual data
 	        //time_start=clock();
 	        //cBvsrm.MCMC(X_Genotype, y, 1); //pheno_var is calculated here
 	        //cPar.time_opt=(clock()-time_start)/(double(CLOCKS_PER_SEC)*60.0);
 	        //cBvsrm.CopyToParam(cPar);
 	        //cout << "\n MCMC cost " << cPar.time_opt << " minutes \n";
-
-	        FreeUCharMatrix(X_Genotype, cPar.ns_test); 
+	        //Lei note here
 			gsl_vector_free (y);
+			gsl_matrix_free (X_Genotype);
         }else{
-        	// Convert LD matrix from LDref
-	        cPar.Convert_LD() ; 
+        	// Convert LD matrix from LDcorr ref file
+	        cPar.Convert_LD() ; // generate LD correlation matrix for test SNPs
 	        cout << "\nObtain LD correlation matrix from LDcorr.txt Success!" << endl; 
 	        if(cPar.printLD){
 	        	string file_LD;
@@ -893,17 +870,14 @@ void BFGWAS::BatchRun (PARAM &cPar)
         	}
         }
 
-
         // Sum Stat has been load to cPar
         // Using summary statistics
         cBvsrm.CopyFromParam(cPar);
-
         time_start=clock();
         cBvsrm.ns_neib = 2 * cBvsrm.win + 1;
-        cBvsrm.MCMC_SS(cPar.LD, cPar.U_STAT); // Run the MCMC algorithm
+        cBvsrm.MCMC_SS(cPar.LD, cPar.mbeta);
         cPar.time_opt=(clock()-time_start)/(double(CLOCKS_PER_SEC)*60.0);
-        cout << "\nMCMC_SS costs " << cPar.time_opt << " minutes \n";
-
+        cout << "MCMC_SS costs " << cPar.time_opt << " minutes \n";
         cBvsrm.CopyToParam(cPar);	
     }
 		
@@ -941,15 +915,13 @@ void BFGWAS::WriteLog (int argc, char ** argv, PARAM &cPar)
 	  //ptm->tm_year<<":"<<ptm->tm_month<<":"<<ptm->tm_day":"<<ptm->tm_hour<<":"<<ptm->tm_min<<endl;
 	
 	outfile<<"##"<<endl;
-	outfile<<"## Summary Statistics:"<<endl;
+	outfile<<"## Sample Sizes and Test SNP Numbers :"<<endl;
 	outfile<<"## number_of_total_individuals = "<<cPar.ni_total<<endl;	
 	outfile<<"## number_of_analyzed_individuals = "<<cPar.ni_test<<endl;
 	outfile<<"## number_of_total_SNPs = "<<cPar.ns_total<<endl;	
 	outfile<<"## number_of_analyzed_SNPs = "<<cPar.ns_test<<endl;
 	
 	if (cPar.a_mode==11) {
-		//outfile<<"## Phenotype mean = "<<cPar.pheno_mean<<endl;	
-		outfile<<"## Phenotype_var = "<<cPar.pheno_var<<endl;
 		outfile<<"##"<<endl;
 		outfile<<"## MCMC related:"<<endl;	
 		//outfile<<"## initial value of h = "<<cPar.cHyp_initial.h<<endl;
@@ -959,7 +931,7 @@ void BFGWAS::WriteLog (int argc, char ** argv, PARAM &cPar)
 		outfile<<"## random seed = "<<cPar.randseed<<endl;
 		outfile<<"## acceptance ratio = "<<(double)cPar.n_accept/(double)((cPar.w_step+cPar.s_step)*cPar.n_mh)<<endl;
 
-		outfile<<"## Region_PIP = "<<(double)cPar.region_pip <<endl;
+		outfile<< "## Region_PIP = " << cPar.region_pip <<endl;
 
 	}else if (cPar.a_mode >= 51 && cPar.a_mode <= 54){
 		outfile<<"## Phenotype mean = "<<cPar.pheno_mean<<endl;	

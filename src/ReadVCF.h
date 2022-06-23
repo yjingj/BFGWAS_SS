@@ -82,6 +82,7 @@ uchar FloatToUchar(const float doseage);
 uchar IntToUchar(const int intc);
 uchar DoubleToUchar(const double doseage);
 
+//Lei's change: do not need anymore since we use matrix directly.
 void getGTgslVec(uchar ** X, gsl_vector *xvec, size_t marker_i, const size_t ni_test, const size_t ns_test);
 
 void getGTgslVec(uchar ** X, gsl_vector *xvec, size_t marker_i, const size_t ni_test, const size_t ns_test, std::vector <size_t> &CompBuffSizeVec, size_t UnCompBufferSize);

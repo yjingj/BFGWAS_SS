@@ -172,8 +172,7 @@ public:
     double sigma_b2; //
 	double pve;
 	double pge;
-	size_t n_gamma;
-    
+	size_t n_gamma; // total number of selected SNPS
 };
 
 
@@ -211,9 +210,9 @@ public:
 
     // SS related parameters
     string file_score;
-    string file_cov;
+    string file_corr;
     vector< vector<double> > LD_ref, LD;
-    vector<double> U_STAT, SQRT_V_STAT, pval_vec, xtx_vec, snp_var_vec;
+    vector<double> U_STAT, SQRT_V_STAT, Z_SCORE, pval_vec, xtx_vec, snp_var_vec;
     vector<double>  mbeta, mbeta_SE, ni_effect_vec;
     vector<pair<size_t, double> >  pos_ChisqTest;
     
@@ -255,7 +254,7 @@ public:
 	size_t s_step;					//number of sampling iterations
 	size_t n_accept;				//number of acceptance
 	size_t n_mh;					//number of MH steps within each iteration
-    size_t region_pip;              //number of MCMC with SNPs>0
+    double region_pip;              //number of MCMC with SNPs>0
 	long int randseed;
 	double trace_G;
 	
@@ -311,8 +310,8 @@ public:
 	void CheckParam (); 
 	void CheckData ();	
 	void PrintSummary ();
-	void ReadGenotypes (uchar **X, gsl_matrix *K);
-	void WriteGenotypes(uchar **X);
+	void ReadGenotypes (gsl_matrix *X, gsl_matrix *K);
+	void WriteGenotypes(gsl_matrix *X);
 
 	// summary statistics;
 	void ReadSS ();

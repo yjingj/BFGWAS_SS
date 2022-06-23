@@ -8,46 +8,50 @@ args <- commandArgs(TRUE)
 
 hypfile=args[[1]]
 k=as.numeric(args[[2]])
-pp = as.numeric(args[[3]])
-abgamma = as.numeric(args[[4]])
-EM_result_file = args[[5]]
-hypcurrent_file=args[[6]]
-
-# abgamma=0.1
-a_gamma <- b_gamma <- abgamma;
-print(paste("a_gamma=b_gamma = ", abgamma))
+pp = as.numeric(args[[3]]) # prior causal probability
+a_gamma = as.numeric(args[[4]]) # prior shape parameter in IG
+b_gamma = as.numeric(args[[5]]) # prior scale parameter in IG
+EM_result_file = args[[6]]
+hypcurrent_file=args[[7]]
 
 ###### Define functions to be used
-CI_fish_pi <- function(m, p, a, b){
-	pi_hat = (sum(m) + a - 1.0) / (p + a + b - 2.0)
+CI_fish_pi <- function(gamma, m, a, b){
+	# gamma: PIP vector
+	# m : number of SNPs per category
+	# a, b : hyper parameters in prior beta distribution
+	pi_hat = (sum(gamma) + a - 1.0) / (m + a + b - 2.0)
 	if(pi_hat <= 0 || pi_hat > 1){
 		pi_hat = a/(a+b)
 		se_pi = 0
 	}else{
-		if(pi_hat * (1-pi_hat) / (p + a + b - 2.0) > 0){
-		  se_pi = sqrt(pi_hat * (1-pi_hat) / (p + a + b - 2.0))
+		if(pi_hat * (1-pi_hat) / (m + a + b - 2.0) > 0){
+		  se_pi = sqrt(pi_hat * (1-pi_hat) / (m + a + b - 2.0))
 		}else{se_pi=0}
 	}
 	return(c(pi_hat, se_pi))
 }
 
-Est_sigma2 <- function(sigma2, m, tau, a, b){
-	sigma2_hat = (sum(sigma2 * m) * tau + 2 * b) / (sum(m) + 2 * (a + 1))
+# Posterior estimates of signma2
+Est_sigma2 <- function(beta2, gamma, a, b){
+	# beta2: squared beta estimates
+	# gamma: PIP vector
+	# a, b: hyper parameters in the prior inverse-gamma distribution
+	sigma2_hat = (sum(beta2 * gamma) + 2 * b) / (sum(gamma) + 2 * (a + 1))
 	return(sigma2_hat)
 }
 
-CI_fish_sigma2 <- function(sigma2, m, tau, a, b){
-	sigma2_hat = Est_sigma2(sigma2, m, tau, a, b)
-	if( (sum(m) * tau - sum(m)/2 - (a+1) + 2*b/sigma2_hat) < 0){
+CI_fish_sigma2 <- function(beta2, gamma, a, b){
+	sigma2_hat = Est_sigma2(beta2, gamma, a, b)
+	if( (sum(gamma)- sum(gamma)/2 - (a+1) + 2*b/sigma2_hat) < 0){
 		se_sigma2=0
 	}else{
-		se_sigma2 = sigma2_hat * sqrt(1/(sum(m) * tau - sum(m)/2 - (a+1) + 2*b/sigma2_hat))
+		se_sigma2 = sigma2_hat * sqrt(1/(sum(gamma)  - sum(gamma)/2 - (a+1) + 2*b/sigma2_hat))
 	}
 	return(c(sigma2_hat, se_sigma2))
 }
 
 ## log prior functions
-logprior_sigma <- function(a, b, x){ return(-(1+a) * log(x) - b/x) }
+logprior_sigma2 <- function(a, b, x){ return(-(1+a) * log(x) - b/x) }
 
 logprior_pi <- function(a, b, x){ return((a-1) * log(x) + (b-1) * log(1 - x)) }
 
@@ -58,48 +62,45 @@ ptm <- proc.time()
 # hypfile="/net/fantasia/home/yjingj/GIT/bfGWAS/1KG_example/Test_Wkdir/hypval.current 
 
 hypdata = read.table(hypfile, sep="\t", header=FALSE)
-n_type = (dim(hypdata)[2] - 4)/4
+n_type = (dim(hypdata)[2] - 3)/3
 print(paste(" Total Annotation categories : ", n_type))
 
-temp_col_names <- c("block", "loglike", "GV", "rv")
+temp_col_names <- c("block", "loglike", "r2")
+em_out_names <- c("EM_iteration", "r2", "loglike")
 for(i in 1:n_type){
 	temp_col_names <- c(temp_col_names, 
-			paste(c("n", "G", "m", "sigma2"), (i-1), sep = "_"))
+			paste(c("m", "sum_gamma", "sum_Ebeta2"), (i-1), sep = "_"))
+	em_out_names <- c(em_out_names, paste(c("pi_est", "pi_se", "sigma2_est", "sigma2_se"), (i-1), sep = "_"))
 }
 
 colnames(hypdata) <-  temp_col_names
 
 ########### Update hyper parameter values
-rv = mean(hypdata[, "rv"])
-tau = 1.0 / rv
-pve = sum(hypdata[, "GV"])
+pve = sum(hypdata[, "r2"])
 
 prehyp <- read.table(hypcurrent_file, header=TRUE)
 print("hyper parameter values before MCMC: ")
 print(prehyp)
 
 ######### Set hierarchical parameter values
-n_vec = rep(0, n_type)
+m_vec = rep(0, n_type)
 for(i in 1:n_type){
-	 n_vec[i] <- sum(hypdata[, paste("n", (i-1), sep="_")])
+	 m_vec[i] <- sum(hypdata[, paste("m", (i-1), sep="_")])
 }
 
 #### updating hyper pi and sigma2 values for each group
 hypcurrent <- NULL
 hypmat <- NULL
-
+sum_gamma = 0
 for(i in 1:n_type){
 	# print(i)
-	if(n_vec[i] > 0){
-		a_beta = 2 * n_vec[i] * pp; b_beta = 2 * n_vec[i] - a_beta;
+	if(m_vec[i] > 0){
+		a_beta = m_vec[i] * pp; b_beta = m_vec[i] - a_beta;
 		}else{a_beta=1; b_beta = 1e6 - 1;}
-	
-	m_temp = hypdata[, paste("m", (i-1), sep="_")]
-
-	pi_temp = CI_fish_pi(m_temp, n_vec[i], a_beta, b_beta)
-
-	sigma2_temp = CI_fish_sigma2(hypdata[, paste("sigma2", (i-1), sep="_")], m_temp, tau, a_gamma, b_gamma)
-
+	sum_gamma_temp = hypdata[, paste("sum_gamma", (i-1), sep="_")]
+	sum_gamma = sum_gamma + sum(sum_gamma_temp)
+	pi_temp = CI_fish_pi(sum_gamma_temp, m_vec[i], a_beta, b_beta)
+	sigma2_temp = CI_fish_sigma2(hypdata[, paste("sum_Ebeta2", (i-1), sep="_")], sum_gamma_temp,  a_gamma, b_gamma)
 	hypcurrent <- c(hypcurrent, pi_temp, sigma2_temp)
 	# print(cbind(pi_temp, sigma2_temp))
 	hypmat <- rbind(hypmat, c(pi_temp[1], sigma2_temp[1]))
@@ -115,29 +116,37 @@ write.table(format(hypmat, scientific=TRUE),
 
 #### Summarize log-likelihood
 loglike_total = sum(hypdata$loglike)
-
 for(i in 1:n_type){
 	if(sum(prehyp[i, ]>0)==2){
-
-		if(n_vec[i] > 0){
-			a_beta = 2 * n_vec[i] * pp; b_beta = 2 * n_vec[i] - a_beta;
+		if(m_vec[i] > 0){
+			a_beta = m_vec[i] * pp; b_beta = m_vec[i] - a_beta;
 		}else{a_beta=1; b_beta = 1e6 - 1;}
 
 		loglike_total = loglike_total + 
 				logprior_pi(a_beta, b_beta, prehyp[i, 1]) +
-    			logprior_sigma(a_gamma, b_gamma, prehyp[i, 2]) 
+    			logprior_sigma2(a_gamma, b_gamma, prehyp[i, 2])
     }else{
     	print("pre-hyper-parameter <= 0... ")
     }
 }
 
 ########## Write out updated hyper parameter values and se to EM_result_file
-# EM_result_file="/net/fantasia/home/yjingj/GIT/bfGWAS/1KG_example/Test_Wkdir/Eoutput/EM_result.txt"
+# EM_result_file="/BFGWAS_SS/1KG_example/Test_Wkdir/Eoutput/EM_result.txt"
+print(paste("Sum PIP = ", sum_gamma))
+print(paste("Regression R2 = ", pve))
+print(paste("Posterior log likelihood = ", loglike_total))
+
 hypcurrent = c(pve, loglike_total, hypcurrent)
 hypcurrent <- format(hypcurrent, scientific = TRUE)
 print("write to hypcurrent file with hyper parameter values after MCMC: ")
 print(c(k, hypcurrent))
-write.table(matrix(c(k, hypcurrent), nrow=1), file = EM_result_file, sep = "\t", quote = FALSE, row.names = FALSE, col.names = FALSE, append=TRUE)
+
+if(k==0){
+	write.table(matrix(c(k, hypcurrent), nrow=1, dimnames = list(NULL, em_out_names)), file = EM_result_file, sep = "\t", quote = FALSE, row.names = FALSE, col.names = TRUE, append=FALSE)
+}else{
+	write.table(matrix(c(k, hypcurrent), nrow=1), file = EM_result_file, sep = "\t", quote = FALSE, row.names = FALSE, col.names = FALSE, append=TRUE)
+}
+
 
 print("EM step time cost (in minutes) : ")
 print((proc.time() - ptm)/60)

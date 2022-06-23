@@ -47,8 +47,11 @@ double LULndet (gsl_matrix *LU);
 double LULndet (gsl_matrix_float *LU);
 void LUSolve (const gsl_matrix *LU, const gsl_permutation *p, const gsl_vector *b, gsl_vector *x);
 void LUSolve (const gsl_matrix_float *LU, const gsl_permutation *p, const gsl_vector_float *b, gsl_vector_float *x);
+
 void topdm(gsl_matrix *Omega);
 void Ginv(gsl_matrix *XtX_gtemp);
+void Ginv_logdet(gsl_matrix *Omega, double &logdet); // jy added 06/2022
+
 void EigenSolve(const gsl_matrix *XtX, const gsl_vector *Xty, gsl_vector *beta, const double &lambda);
 void EigenInverse(gsl_matrix *XtX);
 void CholeskyInverse(gsl_matrix *XtX);

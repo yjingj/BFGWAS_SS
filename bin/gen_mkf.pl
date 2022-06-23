@@ -30,7 +30,7 @@ Options:
   --wkdir         work directory : location for all output files
   --tool_dir         directory for the C++ executable file for Estep (running MCMC)
   --LDdir       directory of LD correlation files
-  --Score_dir    directory of GWAS single variant score statistic files
+  --Zscore_dir    directory of GWAS single variant Zscore statistic files
   --filehead         text file with a list of fileheads for genome blocks
   --anno_dir       annotation file directory
   --anno_code       annotation classification code file
@@ -42,7 +42,8 @@ Options:
   --Nmcmc         number of MCMC iterations: default 10,000
   --NmcmcLast       number of MCMC iterations for the last EM iteration: default 50,000
   --pp       specify prior for the causal probability: default 1e-6
-  --abgamma  specify inverse gamma prior for the effect size variance: default 0.1
+  --a_gamma  specify shape parameter in the inverse gamma prior for the effect size variance: default 0.1
+  --b_gamma  specify scale parameter in the inverse gamma prior for the effect size variance: default 0.1
   --win      window size of the neighborhood: default 100
   -c         compress genotype data (1) or not (0): default 0 (do not compress)
   --initype  specify initial model (1:start with top signal), (2: start with genome-wide significant signals), or default (3: stepwise selected signals)
@@ -70,40 +71,37 @@ my $makeFile = "BFGWAS.mk";
 my $tool_dir="";
 my $wkdir=getcwd();
 my $filehead = "";
-my $Score_dir = "";
+my $Zscore_dir = "";
 my $LDdir="";
-my $Nsample;
 my $anno_dir="";
 my $annoCode="";
 my $hfile="";
+my $Nsample="1000";
 
 my $EM=3;
-my $maf="0.005";
+my $maf="0.001";
 my $smin="0";
 my $smax="5";
 my $win="100";
 my $burnin="10000";
 my $Nmcmc="10000";
-my $NmcmcLast="50000";
-my $compress=0;
-my $initype="3";
-my $pv="1";
+my $NmcmcLast="10000";
 my $pp="1e-6";
-my $abgamma="0.1";
+my $a_gamma="0.1";
+my $b_gamma="100";
 
 #initialize options
 Getopt::Long::Configure ('bundling');
 
 if(!GetOptions ('h'=>\$help, 'v'=>\$verbose, 'd'=>\$debug, 'm'=>\$man,
                 'wkdir:s'=>\$wkdir, 'tool_dir:s' =>\$tool_dir, 
-                'LDdir:s'=>\$LDdir, 'Score_dir:s'=>\$Score_dir, 
+                'LDdir:s'=>\$LDdir, 'Zscore_dir:s'=>\$Zscore_dir,
                 'filehead:s'=>\$filehead, 'anno_dir:s'=>\$anno_dir, 
                 'anno_code:s'=>\$annoCode, 'hfile:s'=>\$hfile, 
-                'pv:s'=>\$pv,'Nsample:i'=>\$Nsample, 'maf:s'=>\$maf,
+                'maf:s'=>\$maf, 'Nsample:s'=>\$Nsample,
                 'Nburnin:s'=>\$burnin, 'Nmcmc:s'=>\$Nmcmc, 'NmcmcLast:s'=>\$NmcmcLast,
-                'pp:s'=>\$pp, 'abgamma:s'=>\$abgamma, 'win:s'=>\$win,
-                'c:i'=>\$compress, 'initype:s'=>\$initype,
-                'smin:s'=>\$smin, 'smax:s'=>\$smax, 
+                'pp:s'=>\$pp, 'a_gamma:s'=>\$a_gamma, 'b_gamma:s'=>\$b_gamma,
+                'win:s'=>\$win, 'smin:s'=>\$smin, 'smax:s'=>\$smax,
                 'em:i'=>\$EM, 'mf:s'=>\$makeFile)
   || !defined($wkdir) || scalar(@ARGV)!=0)
 {
@@ -143,20 +141,15 @@ printf("\n");
 printf("launch method : %s\n", $launchMethod);
 printf("work directory : %s\n", $wkdir);
 print "Estep: ", $toolE, "\n", "Rscript: ", $rs, "\n"; 
-print "Score_dir: ", $Score_dir, "\n", "LDdir: ", $LDdir, "\n", 
+print "Zscore_dir: ", $Zscore_dir, "\n", "LDdir: ", $LDdir, "\n",
         "anno_dir: ", $anno_dir, "\nannoCode: ", $annoCode, "\n", 
         "hfile: ", $hfile, "\nfilehead text file: ", $filehead, "\n",
-        "maf ", $maf, "; smin ", $smin, "\n", 
+        "Nsample ", $Nsample, "; maf ", $maf, "; smin ", $smin, "\n",
         "smax ", $smax, "; win ", $win, "\n", 
         "burnin ", $burnin, "; Nmcmc ", $Nmcmc, "; NmcmcLast ", $NmcmcLast, "\n",
-        "compress ", $compress, "; initype ", $initype, "\n",
-        "pv ", $pv, "; pp ", $pp, "; abgamma ", $abgamma, "\n";
+        "; pp ", $pp, "; a_gamma ", $a_gamma, "; b_gamma ", $b_gamma,"\n";
 printf("\n");
 
-my $comp = "";
-if ($compress != 0){
-  $comp = "-comp"
-}
 
 #arrays for storing targets, dependencies and commands
 my @tgts = ();
@@ -215,7 +208,7 @@ for(my $j=0; $j< @filehead; ++$j)
         $tgt = "$wkdir/OUT/$line.$i.OK";
         $dep = "$wkdir/pre_em.OK";
 
-        @cmd = "$toolE -inputSS -score ${Score_dir}/${line}.score.txt.gz -LDcorr ${LDdir}/${line}.LDcorr.txt.gz -a ${anno_dir}/Anno_${line}.txt.gz -fcode ${annoCode} -hfile ${hypcurrent} -n ${Nsample} -pv ${pv} -maf ${maf} -bvsrm -smin $smin -smax $smax -win $win -o ${line} -w ${burnin} -s ${Nmcmc} -initype $initype -seed 2021 > ${wkdir}/OUT/${line}.output.txt";
+        @cmd = "$toolE -inputSS -Zscore ${Zscore_dir}/${line}.Zscore.txt.gz -LDcorr ${LDdir}/${line}.LDcorr.txt.gz -a ${anno_dir}/Anno_${line}.txt.gz -fcode ${annoCode} -hfile ${hypcurrent} -maf ${maf} -n $Nsample -bvsrm -smin $smin -smax $smax -win $win -o ${line} -w ${burnin} -s ${Nmcmc} -seed 2022 > ${wkdir}/OUT/${line}.output.txt";
         makeJob($tgt, $dep, @cmd);
     }
 
@@ -225,14 +218,16 @@ my $logfile="$wkdir/Eoutput/log$i.txt";
 
 $tgt = "$wkdir/Eoutput/cp_param$i.OK";
 $dep = "$premcmcOK";
-@cmd = "cat \`ls -d -1 $wkdir/output/** | grep paramtemp | sort\` > $paramfile";
-push(@cmd, "cat \`ls -d -1 $wkdir/output/** | grep hyptemp | sort\` > $hypfile");
-push(@cmd, "cat \`ls -d -1 $wkdir/output/** | grep log | sort\` > $logfile");
+  @cmd = "cat \`ls -d -1 $wkdir/output/** | grep paramtemp | head -n1 \` | head -n1 > $paramfile";
+  push(@cmd, "cat \`ls -d -1 $wkdir/output/** | grep hyptemp | head -n1 \` | head -n1 > $hypfile");
+  push(@cmd, "cat \`ls -d -1 $wkdir/output/** | grep paramtemp | sort \` |  grep -v \"#\" >> $paramfile");
+  push(@cmd, "cat \`ls -d -1 $wkdir/output/** | grep hyptemp | sort\`| grep -v \"#\"  >> $hypfile");
+  push(@cmd, "cat \`ls -d -1 $wkdir/output/** | grep log | sort\` > $logfile");
 makeJob($tgt, $dep, @cmd);
 
 $tgt = "$wkdir/R$i.OK";
 $dep = "$wkdir/Eoutput/cp_param$i.OK $wkdir/pre_em.OK";
-@cmd = "Rscript --vanilla ${rs} $hypfile $i $pp $abgamma $wkdir/Eoutput/EM_result.txt $hypcurrent >> $wkdir/Rout.txt";
+@cmd = "Rscript --vanilla ${rs} $hypfile $i $pp $a_gamma $b_gamma $wkdir/Eoutput/EM_result.txt $hypcurrent >> $wkdir/Rout.txt";
 makeJob($tgt, $dep, @cmd);
 
 
@@ -249,9 +244,9 @@ for $i (1..$EM){
         $tgt = "$wkdir/OUT/$line.$i.OK";
         $dep = "$wkdir/R$ipre.OK";
         if($i < $EM){
-          @cmd = "$toolE -inputSS -score ${Score_dir}/${line}.score.txt.gz -LDcorr ${LDdir}/${line}.LDcorr.txt.gz -a ${anno_dir}/Anno_${line}.txt.gz -fcode ${annoCode} -hfile ${hypcurrent} -n ${Nsample} -pv ${pv} -maf ${maf} -bvsrm -smin $smin -smax $smax -win $win -o ${line} -w ${burnin} -s ${Nmcmc} -initype $initype -seed 2021 > ${wkdir}/OUT/${line}.output.txt" ;
+          @cmd = "$toolE -inputSS -Zscore ${Zscore_dir}/${line}.Zscore.txt.gz -LDcorr ${LDdir}/${line}.LDcorr.txt.gz -a ${anno_dir}/Anno_${line}.txt.gz -fcode ${annoCode} -hfile ${hypcurrent} -n $Nsample -maf ${maf} -bvsrm -smin $smin -smax $smax -win $win -o ${line} -w ${burnin} -s ${Nmcmc} -seed 2022 > ${wkdir}/OUT/${line}.output.txt" ;
         } elsif ($i == $EM){
-            @cmd = "$toolE -inputSS -score ${Score_dir}/${line}.score.txt.gz -LDcorr ${LDdir}/${line}.LDcorr.txt.gz -a ${anno_dir}/Anno_${line}.txt.gz -fcode ${annoCode} -hfile ${hypcurrent} -n ${Nsample} -pv ${pv} -maf ${maf} -bvsrm -smin $smin -smax $smax -win $win -o ${line} -w ${burnin} -s ${NmcmcLast} -initype $initype -seed 2021 > ${wkdir}/OUT/${line}.output.txt";
+            @cmd = "$toolE -inputSS -Zscore ${Zscore_dir}/${line}.Zscore.txt.gz -LDcorr ${LDdir}/${line}.LDcorr.txt.gz -a ${anno_dir}/Anno_${line}.txt.gz -fcode ${annoCode} -hfile ${hypcurrent} -n $Nsample -maf ${maf} -bvsrm -smin $smin -smax $smax -win $win -o ${line} -w ${burnin} -s ${NmcmcLast} -seed 2022 > ${wkdir}/OUT/${line}.output.txt";
       }
         makeJob($tgt, $dep, @cmd);
     }
@@ -262,14 +257,16 @@ for $i (1..$EM){
 
   $tgt = "$wkdir/Eoutput/cp_param$i.OK";
   $dep = "$premcmcOK";
-  @cmd = "cat \`ls -d -1 $wkdir/output/** | grep paramtemp | sort \` > $paramfile";
-  push(@cmd, "cat \`ls -d -1 $wkdir/output/** | grep hyptemp | sort\` > $hypfile");
+  @cmd = "cat \`ls -d -1 $wkdir/output/** | grep paramtemp | head -n1 \` | head -n1 > $paramfile";
+  push(@cmd, "cat \`ls -d -1 $wkdir/output/** | grep hyptemp | head -n1 \` | head -n1 > $hypfile");
+  push(@cmd, "cat \`ls -d -1 $wkdir/output/** | grep paramtemp | sort \` |  grep -v \"#\" >> $paramfile");
+  push(@cmd, "cat \`ls -d -1 $wkdir/output/** | grep hyptemp | sort\`| grep -v \"#\"  >> $hypfile");
   push(@cmd, "cat \`ls -d -1 $wkdir/output/** | grep log | sort\` > $logfile");
   makeJob($tgt, $dep, @cmd);
 
   $tgt = "$wkdir/R$i.OK";
   $dep = "$wkdir/Eoutput/cp_param$i.OK";
-  @cmd = "Rscript --vanilla $rs $hypfile $i $pp $abgamma $wkdir/Eoutput/EM_result.txt $hypcurrent >> $wkdir/Rout.txt";
+  @cmd = "Rscript --vanilla $rs $hypfile $i $pp $a_gamma $b_gamma $wkdir/Eoutput/EM_result.txt $hypcurrent >> $wkdir/Rout.txt";
   makeJob($tgt, $dep, @cmd);
 
 }

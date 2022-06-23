@@ -16,7 +16,7 @@
 #######################################################################
 
 VARS=`getopt -o "" -a -l \
-wkdir:,toolE:,geno_dir:,pheno:,genofile_type:,GTfield:,filehead:,LDdir:,Score_dir:,LDwindow:,maf: \
+wkdir:,toolE:,geno_dir:,pheno:,genofile_type:,GTfield:,filehead:,LDdir:,Zscore_dir:,LDwindow:,maf: \
 -- "$@"`
 
 if [ $? != 0 ]
@@ -38,7 +38,7 @@ do
 				--GTfield|-GTfield) GTfield=$2; shift 2;;
         --filehead|-filehead) filehead=$2; shift 2;;
         --LDdir|-LDdir) LDdir=$2; shift 2;;
-        --Score_dir|-Score_dir) Score_dir=$2; shift 2;;
+        --Zscore_dir|-Zscore_dir) Zscore_dir=$2; shift 2;;
         --LDwindow|-LDwindow) LDwindow=$2; shift 2;;
         --maf|-maf) maf=$2; shift 2;;
         --) shift;break;;
@@ -47,9 +47,9 @@ do
 done
 
 #### default value
-LDwindow=${LDwindow:-500000} # 500KB
+LDwindow=${LDwindow:-1000000} # 1000KB
 LDwindow_i=${LDwindow}
-maf=${maf:-0}
+maf=${maf:-0.0001}
 genofile_type=${genofile_type:-vcf}
 GTfield=${GTfield:-GT}
 
@@ -62,7 +62,7 @@ mkdir -p ${Score_dir}
 ####################
 
 ##### run ./BFGWAS/bin/Estep_mcmc to generate GWAS summary score statistic and LD files
-echo Generate GWAS summary score statistic and LD files with genome blocks under: ${geno_dir}
+echo Generate GWAS summary Zscore statistic and LD correlation files with genome blocks under: ${geno_dir}
 echo Genotype file type: $genofile_type
 echo Phenotype: ${pheno}
 echo Genetic variants with MAF greater than ${maf}
@@ -82,8 +82,8 @@ cat ${filehead} | while read line ; do
 	if [ -s ${LDdir}/${line}.LDcorr.txt.gz ] ; then
 		echo ${LDdir}/${line}.LDcorr.txt.gz exists!
 		LDwindow_i=1
-		if [ -s ${Score_dir}/${line}.score.txt.gz ] ; then
-			echo ${Score_dir}/${line}.score.txt.gz exists.
+		if [ -s ${Zscore_dir}/${line}.Zscore.txt.gz ] ; then
+			echo ${Zscore_dir}/${line}.Zscore.txt.gz exists.
 			continue
 		fi
 	fi
@@ -118,7 +118,7 @@ cat ${filehead} | while read line ; do
 
 ##### Copy summary stat back
 	rsync  ./output/${line}.LDcorr.txt.gz* ${LDdir}/
-	rsync  ./output/${line}.score.txt.gz* ${Score_dir}/
+	rsync  ./output/${line}.Zscore.txt.gz* ${Zscore_dir}/
 
 	## Remove temperary output directory
 	rm -f ./output/${line}*

@@ -1,5 +1,5 @@
 /*
-	Bayesian Functional GWAS --- MCMC (bfGWAS:MCMC)
+	Bayesian Functional GWAS --- MCMC (BFGWAS:MCMC)
     Copyright (C) 2016  Jingjing Yang
 
     This program is free software: you can redistribute it and/or modify
@@ -18,8 +18,6 @@
 
 
 #include "io.h"
-
-
 
 // define to_string function : convert to string
 template <class T>
@@ -125,7 +123,6 @@ bool ReadFile_snps (const string &file_snps, set<string> &setSnps)
 	return true;
 }
 
-
 void SetMAFCode (const double &maf, string &func_type){
 	if( maf >= 0.005 && maf < 0.01) func_type+="-maf-range1";
     else if ( maf >= 0.01 && maf < 0.05) func_type+="-maf-range2";
@@ -141,7 +138,6 @@ bool ReadFile_anno (const string &file_anno, const string &file_func_code, map<s
 {
     string line;
     char *pch, *nch;
-
     //load in unique function codes
     string func_type;
     int func_code, snp_nfunc;
@@ -152,13 +148,10 @@ bool ReadFile_anno (const string &file_anno, const string &file_func_code, map<s
     if (!infile_code) {cout<<"error opening annotation file: "<<file_func_code<<endl; return false;}
 
     while (!safeGetline(infile_code, line).eof()) {
-        
         if (line[0] == '#') {
             pch = (char *)line.c_str();
             nch = strchr(pch, '\t');
             n_type = strtol(nch, NULL, 0);
-            cout << "Number of annotation categories " << n_type << endl;            
-            mFunc.assign(n_type, 0);
             continue;
         }
         else {
@@ -172,19 +165,21 @@ bool ReadFile_anno (const string &file_anno, const string &file_func_code, map<s
     }
     infile_code.close();
     infile_code.clear();
-    
+
+    cout << "Number of annotation categories " << n_type << endl;
+    mFunc.assign(n_type, 0);
+
     // Load annotation file...
     cout<<"Reading annotation file: "<<file_anno<<endl; 
     igzstream infile (file_anno.c_str(), igzstream::in);
     if (!infile) {cout<<"error opening annotation file: "<<file_anno<<endl; return false;}
     
     // read function annotation file
-    string chr, ref, alt, rs;
+    string chr, ref, alt, rs, key;
     long int b_pos=0;
     size_t snp_i = 0;
 
-    cout << "mapID2num size = " << mapID2num.size() << endl; // map to genotype file by rs
-
+   // cout << "mapID2num size = " << mapID2num.size() << endl; // map to genotype file by rs
     while (!safeGetline(infile, line).eof()) {
         if (line[0] == '#') {
             continue;
@@ -206,115 +201,88 @@ bool ReadFile_anno (const string &file_anno, const string &file_func_code, map<s
             nch = strchr(pch, '\t');
             ref.assign(pch, nch-pch); //ref
             pch = (nch == NULL) ? NULL : nch+1;
+            transform(ref.begin(), ref.end(), ref.begin(), ::toupper);
 
             nch = strchr(pch, '\t');
             alt.assign(pch, nch-pch); //alt
+            if( alt.find(',') != string::npos ){
+                alt=alt.substr(0, alt.find(','));
+            }
+            transform(alt.begin(), alt.end(), alt.begin(), ::toupper);
             pch = (nch == NULL) ? NULL : nch+1;
 
-            if(rs.compare(".") == 0 || rs.empty()){
+            if(rs.compare(".") == 0 || rs.empty() ){
                 rs = chr + ":" + to_string(b_pos) + ":" + ref + ":" + alt;
             }
-
-            // check if this SNP is in the genotype/score file
-            if(mapID2num.count(rs) == 0) {
-                SwapKey(rs);
-                if(mapID2num.count(rs) == 0)
-                    continue; 
+            //Lei's change;
+            key = chr + ":" + to_string(b_pos) + ":" + ref + ":" + alt;
+            if(mapID2num.count(key) == 0) {
+                SwapKey(key);
+                if(mapID2num.count(key) == 0)
+                    {continue;}
             }
-            else
-            {
-                snp_i = mapID2num[rs];
-            }
+            snp_i = mapID2num[key];
 
-            if (!indicator_snp[snp_i]) {
-                      continue;
-            }
-            else{
-                    // if (snp_i < 10) cout << rs << "; position = " << snp_i;
-                    snp_nfunc = 0;
-                    snpInfo[snp_i].indicator_func.assign(n_type, 0);
-                    // if (snp_i < 10) cout << rs << ":chr" << chr << ":bp"<< b_pos <<endl;
-
-                    if( isalpha(pch[0]) || isdigit(pch[0]) ){
-                    	//pch[0] is a letter or number
-                    	while (pch != NULL) {
-        	                nch = strchr(pch, ',');
-        	                if (nch == NULL) func_type.assign(pch);
-        	                else func_type.assign(pch, nch-pch);
-
-        	                func_code = mapFunc2Code[func_type];
-        	               // if(snp_i < 10)  cout << func_type << " with code " << func_code << endl;
-        	                if(!snpInfo[snp_i].indicator_func[func_code])
-        	                {
-        	                    snpInfo[snp_i].indicator_func[func_code] = 1;
-        	                    snp_nfunc++;
-        	                }
-        	                pch = (nch == NULL) ? NULL : nch+1;
-                    	}
+            if (indicator_snp[snp_i]) {
+                // if (snp_i < 10) cout << rs << "; position = " << snp_i;
+                snpInfo[snp_i].indicator_func.assign(n_type, 0);
+                // if (snp_i < 10) cout << rs << ":chr" << chr << ":bp"<< b_pos <<endl;
+                if( isalpha(pch[0]) || isdigit(pch[0]) ){
+                	//pch[0] is a letter or number
+                	while (pch != NULL) {
+    	                nch = strchr(pch, ',');
+    	                if (nch == NULL) {func_type.assign(pch);}
+    	                else {func_type.assign(pch, nch-pch);}
+    	                func_code = mapFunc2Code[func_type];
+    	               if(snp_i < 100)  {cout << key << " has annotation " << func_type << " with code " << func_code << endl;}
+	                    snpInfo[snp_i].indicator_func[func_code] = 1;
+	                    mFunc[func_code]++;
+                        break;
                 	}
-                	else{
-                		func_type.assign("NA");
-                		func_code = mapFunc2Code[func_type];
-                		if(snp_i < 10)  cout << rs << ":chr" << chr << ":bp"<< b_pos << "has func NA" << " with code " << func_code << endl;
-                		if(!snpInfo[snp_i].indicator_func[func_code])
-        	                {
-        	                    snpInfo[snp_i].indicator_func[func_code] = 1;
-        	                    snp_nfunc++;
-        	                }
-                	}
-
-                    if (snp_nfunc == 1)
-                      {
-                          mFunc[func_code]++;
-                      }
-                    
-                    //if ((snp_nfunc > 0) && (snp_nfunc <= n_type))
-                    /*
-                    // set up weight for func_anno
-                    if (snp_nfunc == 1)
-                      {
-                          snpInfo[snp_i].weight_i = 1.0 ;// / (double)snp_nfunc;
-                          mFunc[func_code]++;
-                      }
-                    else if (snp_nfunc == 0) {
-                        snpInfo[snp_i].weight_i = 0.0;
-                        indicator_snp[snp_i] = 0;
-                        cout << "function annotation is NULL \n ";
-                    }
-                    else {
-                        cerr << "ERROR: snp_nfunc = " << snp_nfunc<< " ... \n"; exit(-1);
-                    }
-                    */
+            	}
+            	else{
+            		func_type.assign("NA");
+            		func_code = mapFunc2Code[func_type];
+            		if(snp_i < 100)  { cout << key << " has func NA" << " with code " << func_code << endl; }
+                    snpInfo[snp_i].indicator_func[func_code] = 1;
+                    mFunc[func_code]++;
+            	}
             }
         }
     }
-    cout << "Number of annotation categories: " << n_type << endl;
     cout << "Number of variants per category: "; PrintVector(mFunc);
-    //cout << "total snp number = " << snp_i << endl;
-    
     infile.close();
     infile.clear();	
-    
     return true;
 }
 
-//Empty Annotation
+//Empty Annotation for reading individual data
 bool Empty_anno (vector<bool> &indicator_snp, vector<SNPINFO> &snpInfo, size_t &n_type, vector<size_t> &mFunc)
 {
     n_type = 1; // all variants are of one annotation
     mFunc.assign(1, 0);
-    // cout << "indicator_snp size = " << indicator_snp.size() << endl;
-
     for(size_t i = 0; i < indicator_snp.size(); i++){
         if(indicator_snp[i] == 0) continue;
         snpInfo[i].indicator_func.assign(n_type, 1);
-        // snpInfo[i].weight_i = 1.0 ;
         mFunc[0]++;
     }
-
     cout << "\nNumber of annotation categories: " << n_type << endl;
     cout << "Number of variants per category: "; PrintVector(mFunc);
-    
+    return true;
+}
+
+
+//Empty Annotation for reading SS data
+bool Empty_anno (vector<SNPPOS> &snp_pos, size_t &n_type, vector<size_t> &mFunc)
+{
+    n_type = 1; // all variants are of one annotation
+    mFunc.assign(1, 0);
+    for(size_t i = 0; i < snp_pos.size(); i++){
+        snp_pos[i].indicator_func.assign(n_type, 1);
+        mFunc[0]++;
+    }
+    cout << "\nNumber of annotation categories: " << n_type << endl;
+    cout << "Number of variants per category: "; PrintVector(mFunc);
     return true;
 }
 
@@ -642,6 +610,7 @@ bool ReadFile_vcf (const string &file_vcf, const set<string> &setSnps, vector<bo
         maf=0; n_miss=0; flag_poly=0; geno_old=-9;
         
         pch= (char *)line.c_str();
+
         
         for (tab_count=0; pch != NULL; tab_count++) {
 
@@ -659,9 +628,17 @@ bool ReadFile_vcf (const string &file_vcf, const set<string> &setSnps, vector<bo
                     case 2:
 			            rs = s; break;
                     case 3:
-                        major = s; break;
+                        major = s;
+                        transform(major.begin(), major.end(), major.begin(), ::toupper);
+                        break;
                     case 4:
-                        minor = s; break;
+                        if( s.find(',') != string::npos ){
+                            minor=s.substr(0, s.find(','));
+                        }else{
+                            minor=s ;
+                        }
+                        transform(minor.begin(), minor.end(), minor.begin(), ::toupper);
+                        break;
                     default:
                         break;
                 }
@@ -996,7 +973,12 @@ bool ReadFile_geno (const string &file_geno, const set<string> &setSnps, vector<
                         case 3:
                             major = s; break;
                         case 4:
-                            minor = s; break;
+                            if( s.find(',') != string::npos ){
+                                minor=s.substr(0, s.find(','));
+                            }else{
+                                minor=s ;
+                            }
+                            break;
                         default:
                             break;
                     }
@@ -1735,7 +1717,8 @@ bool VCFKin (const string &file_vcf, vector<bool> &indicator_idv, vector<bool> &
 }
 
 //Read VCF genotype file, the second time, recode genotype and calculate K
-bool ReadFile_vcf (const string &file_vcf, vector<bool> &indicator_idv, vector<bool> &indicator_snp, uchar ** X, const uint ni_test, const uint ns_test, gsl_matrix *K, const bool calc_K, string &GTfield, vector<double> &SNPmean, vector <size_t> &CompBuffSizeVec, const vector <size_t> &SampleVcfPos, const map<string, size_t> &PhenoID2Pos, const vector<string> &VcfSampleID, bool Compress_Flag)
+//meeting:matrix ni sample size ns snps, indicator vector snp,less
+bool ReadFile_vcf (const string &file_vcf, vector<bool> &indicator_idv, vector<bool> &indicator_snp, gsl_matrix *X, const uint ni_test, const uint ns_test, gsl_matrix *K, const bool calc_K, string &GTfield, vector<double> &SNPmean,  const vector <size_t> &SampleVcfPos, const map<string, size_t> &PhenoID2Pos, const vector<string> &VcfSampleID)
 {
     if (GTfield.empty()) {
         GTfield = "GT"; //defalt load GT Data
@@ -1752,21 +1735,12 @@ bool ReadFile_vcf (const string &file_vcf, vector<bool> &indicator_idv, vector<b
     
     if (calc_K) {gsl_matrix_set_zero (K);}
     
-    gsl_vector *genotype=gsl_vector_alloc (ni_test);
-    uchar *geno_uchar = new uchar[ni_test];
-    
-    size_t sourceBufferSize = (ni_test) * sizeof(uchar);
-    const size_t BufferSize = (size_t)(compressBound(sourceBufferSize));
-    uchar * TempCompBuffer = (uchar*)malloc(BufferSize);
-    uchar * TempBuffer = (uchar*)malloc(sourceBufferSize);
-    size_t compressedBufferSize = BufferSize;
-    //cout << "Source Buffer Size = " << sourceBufferSize << "; Comp Buffer Bound = " << BufferSize  << endl;
-    CompBuffSizeVec.clear();
+    gsl_vector *genotype=gsl_vector_alloc(ni_test);
+
     SNPmean.clear();
 
     double geno, geno_mean;
     size_t n_miss, c_idv=0, c_snp=0, ctest_snp = 0, ctest_idv=0;
-    int result;
     
     char *pch, *p, *nch=NULL, *n;
     size_t tab_count;
@@ -1775,7 +1749,7 @@ bool ReadFile_vcf (const string &file_vcf, vector<bool> &indicator_idv, vector<b
     size_t pheno_index;
     
     //cout << "PhenoID2Pos.size() = " << PhenoID2Pos.size() << " before second vcf file loading... " << endl;
-
+//row by row
     while(!safeGetline(infile, line).eof())
     {
         if (line[0] == '#') {
@@ -1829,19 +1803,19 @@ bool ReadFile_vcf (const string &file_vcf, vector<bool> &indicator_idv, vector<b
                 }
                 else if ( tab_count == SampleVcfPos[ctest_idv] )
                 {
-                	
-                	pheno_id = VcfSampleID[c_idv];
-                	if (PhenoID2Pos.count(pheno_id) > 0){
-                			pheno_index = PhenoID2Pos.at(pheno_id); 
-                	}
-                	else {
-                		cerr << "error: pheno ID matched error ... "<< endl;
-                    	exit(-1);
+
+                    pheno_id = VcfSampleID[c_idv];
+                    if (PhenoID2Pos.count(pheno_id) > 0){
+                            pheno_index = PhenoID2Pos.at(pheno_id);
+                    }
+                    else {
+                        cerr << "error: pheno ID matched error ... "<< endl;
+                        exit(-1);
                     }
 
                     if ( !indicator_idv[pheno_index] ) {
-                    	cerr << "error: pheno is not in sample ... "<< endl;
-                    	exit(-1);
+                        cerr << "error: pheno is not in sample ... "<< endl;
+                        exit(-1);
                         //continue;
                     }
                     else{
@@ -1858,36 +1832,36 @@ bool ReadFile_vcf (const string &file_vcf, vector<bool> &indicator_idv, vector<b
                         }
                         else if ( (p[1] == '/') || (p[1] == '|') ) {
                         //read bi-allelic GT
-                        	if( (p[0]=='.') && (p[2]=='.')){
-                        		geno = -9;//missing
-                        	}
-                        	else if ( (p[0]=='.') && (p[2]!='.')) {
-                            	geno = (double)(p[2] -'0');
+                            if( (p[0]=='.') && (p[2]=='.')){
+                                geno = -9;//missing
+                            }
+                            else if ( (p[0]=='.') && (p[2]!='.')) {
+                                geno = (double)(p[2] -'0');
                                 if(geno != 1 && geno != 0){ 
                                     geno = -9; // multi-allelic
                                 }
-                        	}
-                        	else if ((p[0]!='.') && p[2]=='.') {
-                           		geno = (double)(p[0] -'0');
+                            }
+                            else if ((p[0]!='.') && p[2]=='.') {
+                                geno = (double)(p[0] -'0');
                                 if(geno != 1 && geno != 0){ geno = -9; } // multi-allelic
-                        	}
-                        	else {
+                            }
+                            else {
                                 geno = (double)((p[0] - '0') + (p[2]- '0'));
                                 if(geno != 1 && geno != 0 && geno != 2){ geno = -9; } // multi-allelic
                             }                   
-                    	}
-                    	else if ( GTfield != "GT" ){
-                        	//read dosage data
-                        	if( (p[0]=='.') && ( !isdigit(p[1]) ) ){
-                        		geno = -9; // missing                      		
-                        	}else if (isdigit(p[0])){
-                        		geno = strtod(p, NULL);
+                        }
+                        else if ( GTfield != "GT" ){
+                            //read dosage data
+                            if( (p[0]=='.') && ( !isdigit(p[1]) ) ){
+                                geno = -9; // missing
+                            }else if (isdigit(p[0])){
+                                geno = strtod(p, NULL);
                                 if(geno < 0 || geno > 2) {geno = -9;} // invalid dosage
-                        	}else{
-                        		cerr << "dosage data is not a digit ... " << endl;
-                        		exit(-1);
-                        	}                        
-                    	}else{
+                            }else{
+                                cerr << "dosage data is not a digit ... " << endl;
+                                exit(-1);
+                            }
+                        }else{
                             geno = -9;
                         }
 
@@ -1910,7 +1884,7 @@ bool ReadFile_vcf (const string &file_vcf, vector<bool> &indicator_idv, vector<b
                         c_idv++;
                     }
                 }else if (tab_count >= 9 ){
-                	c_idv++; 
+                    c_idv++;
                 }
                 pch = (nch == NULL) ? NULL : nch+1;
             } // for tab_count
@@ -1927,53 +1901,27 @@ bool ReadFile_vcf (const string &file_vcf, vector<bool> &indicator_idv, vector<b
         }
         // cout << "geno_mean = " << geno_mean << endl; 
 
-        
+        //meeting: change missing to mean
+            //2lei
         for (size_t i=0; i < ni_test; ++i) {
                 if (genotype_miss[i]) {geno=geno_mean; gsl_vector_set (genotype, i, geno);}
-                // do not center genotype data in UCHAR**
-                else { geno = gsl_vector_get (genotype, i);}
-                geno_uchar[i] = DoubleToUchar(geno);
-                //UtX[ctest_snp][i] = DoubleToUchar(geno);
-                //if (ctest_snp==0 && i < 10) cout << geno << ":" << (int)geno_uchar[i] << ", ";
             }
         gsl_vector_add_constant(genotype, -geno_mean); // center genotype gsl_vector here
+        //Lei's change:
+        double mystd;
+        mystd=0.0;
+        for (size_t i = 0; i < ni_test; i++)
+        {
+            mystd = mystd + gsl_vector_get(genotype,i) * gsl_vector_get(genotype,i);
+        }
+        mystd /= (double)(ni_test);
+        mystd = 1.0 / sqrt(mystd);
+        gsl_vector_scale(genotype, mystd);
+        gsl_matrix_set_row(X, ctest_snp, genotype);
             
-            if (Compress_Flag) {
-                compressedBufferSize = BufferSize;
-                result = compress(TempCompBuffer, &compressedBufferSize, geno_uchar, sourceBufferSize);
-                if (result != Z_OK) {
-                    zerr(result);
-                    exit(-1);
-                }
-                else {
-                    X[ctest_snp] = (uchar*)malloc(compressedBufferSize);
-                    memcpy(X[ctest_snp], TempCompBuffer, compressedBufferSize);
-                    CompBuffSizeVec.push_back(compressedBufferSize);
-                    
-                    // UnCompBufferSize=sourceBufferSize;
-                    //  result = uncompress(TempBuffer, &UnCompBufferSize, UtX[c_snp],compressedBufferSize);
-                    //  if(c_snp < 10)  {
-                    //    zerr(result);
-                    //cout << "uncompressed buffer size = " << UnCompBufferSize << endl;
-                    //  PrintVector(TempBuffer, 10);
-                    // }
-                    // cout << "compressed Buffer size = " << compressedBufferSize << endl;
-                }
-            }
-            else {
-                X[ctest_snp] = (uchar*)malloc(sourceBufferSize);
-                memcpy(X[ctest_snp], geno_uchar, ni_test);
-            }            
-            
-            //JY add
-            /*gsl_blas_ddot(genotype, genotype, &vtx);
-            if(vtx < 0.00000001)
-            {cout << "snp has x'x = " << setprecision(9) << vtx << endl;} */
-            
-            if (calc_K) {gsl_blas_dsyr (CblasUpper, 1.0, genotype, K);}
-            
-            c_snp++;
-            ctest_snp++;
+        if (calc_K) {gsl_blas_dsyr (CblasUpper, 1.0, genotype, K);}
+        c_snp++;
+        ctest_snp++;
         }
     }
     // cout << "ctest_snp = " << c_snp << "; ns_test = " << ns_test << endl;
@@ -1981,7 +1929,6 @@ bool ReadFile_vcf (const string &file_vcf, vector<bool> &indicator_idv, vector<b
 
     if (calc_K) {
         gsl_matrix_scale (K, 1.0/(double)ns_test);
-        
         for (size_t i=0; i<genotype->size; ++i) {
             for (size_t j=0; j<i; ++j) {
                 geno=gsl_matrix_get (K, j, i);
@@ -1990,10 +1937,7 @@ bool ReadFile_vcf (const string &file_vcf, vector<bool> &indicator_idv, vector<b
         }
     }
     
-    free(TempBuffer);
-    free(TempCompBuffer);
     gsl_vector_free(genotype);
-    delete [] geno_uchar;
     infile.clear();
     infile.close();
     
@@ -2004,7 +1948,7 @@ bool ReadFile_vcf (const string &file_vcf, vector<bool> &indicator_idv, vector<b
 
 
 //Read genotype dosage file, the second time, recode "mean" genotype and calculate K
-bool ReadFile_geno (const string &file_geno, const vector<bool> &indicator_idv, const vector<bool> &indicator_snp, uchar **X, gsl_matrix *K, const bool calc_K, const size_t ni_test, vector<double> &SNPmean, vector <size_t> &CompBuffSizeVec, const vector <size_t> &SampleVcfPos, const map<string, size_t> &PhenoID2Pos, const vector<string> &VcfSampleID, bool Compress_Flag)
+bool ReadFile_geno (const string &file_geno, const vector<bool> &indicator_idv, const vector<bool> &indicator_snp, gsl_matrix *X, gsl_matrix *K, const bool calc_K, const size_t ni_test, vector<double> &SNPmean, vector <size_t> &CompBuffSizeVec, const vector <size_t> &SampleVcfPos, const map<string, size_t> &PhenoID2Pos, const vector<string> &VcfSampleID, bool Compress_Flag)
 {
 	igzstream infile (file_geno.c_str(), igzstream::in);
 	if (!infile) {cout<<"error reading genotype file:"<<file_geno<<endl; return false;}
@@ -2013,20 +1957,12 @@ bool ReadFile_geno (const string &file_geno, const vector<bool> &indicator_idv, 
 	char *pch, *nch=NULL;
     double geno, geno_mean;
     size_t n_miss, c_idv, ctest_idv, c_snp=0, ctest_snp=0, tab_count, pheno_index;
-    int result;
 	
 	if (calc_K) {gsl_matrix_set_zero (K);}
 	
 	gsl_vector *genotype=gsl_vector_alloc (ni_test);
     uchar *geno_uchar = new uchar[ni_test];
 
-    size_t sourceBufferSize = (ni_test) * sizeof(uchar);
-    const size_t BufferSize = (size_t)(compressBound(sourceBufferSize));
-    uchar * TempCompBuffer = (uchar*)malloc(BufferSize);
-    uchar * TempBuffer = (uchar*)malloc(sourceBufferSize);
-    size_t compressedBufferSize = BufferSize;
-    //cout << "Source Buffer Size = " << sourceBufferSize << "; Comp Buffer Bound = " << BufferSize  << endl;
-    CompBuffSizeVec.clear();
     SNPmean.clear();
 
 	
@@ -2120,26 +2056,29 @@ bool ReadFile_geno (const string &file_geno, const vector<bool> &indicator_idv, 
         //    cout << "SNP " << c_snp << endl; 
         //    PrintVector(genotype, 10);
         //}
-            
-        gsl_vector_add_constant(genotype, -geno_mean); // center genotype gsl_vector here
 
-        if (Compress_Flag) {
-                compressedBufferSize = BufferSize;
-                result = compress(TempCompBuffer, &compressedBufferSize, geno_uchar, sourceBufferSize);
-                if (result != Z_OK) {
-                    zerr(result);
-                    exit(-1);
-                }
-                else {
-                    X[ctest_snp] = (uchar*)malloc(compressedBufferSize);
-                    memcpy(X[ctest_snp], TempCompBuffer, compressedBufferSize);
-                    CompBuffSizeVec.push_back(compressedBufferSize);
-                }
-            }
-        else {
-                X[ctest_snp] = (uchar*)malloc(sourceBufferSize);
-                memcpy(X[ctest_snp], geno_uchar, ni_test);
-            }
+        //lei's change
+
+        gsl_vector_add_constant(genotype, -geno_mean); // center genotype gsl_vector here
+        gsl_vector *tempc = gsl_vector_alloc (ni_test);
+        gsl_vector_memcpy(tempc,genotype);
+        gsl_vector_mul(tempc,genotype);
+            //for loop
+        double mystd;
+        mystd=0.0;
+        //doesn't work
+        //mystd=gsl_vector_sum(tempc);
+        //instead
+        for (size_t i = 0; i < ni_test; i++)
+        {
+            mystd=mystd+gsl_vector_get(tempc,i);
+        }
+        mystd/=(double)(ni_test-1);
+        mystd = sqrt(mystd);
+        gsl_vector_scale(genotype,1/mystd);
+        //meeting:scale
+        gsl_matrix_set_col(X, ctest_snp, genotype);
+            //cout some snps
 
 		if (calc_K) {gsl_blas_dsyr (CblasUpper, 1.0, genotype, K);}
 		
@@ -2161,8 +2100,6 @@ bool ReadFile_geno (const string &file_geno, const vector<bool> &indicator_idv, 
         }
     }
 
-    free(TempBuffer);
-    free(TempCompBuffer);
 	gsl_vector_free (genotype);	
     delete [] geno_uchar;
     
@@ -2175,7 +2112,7 @@ bool ReadFile_geno (const string &file_geno, const vector<bool> &indicator_idv, 
 
 
 //Read BED genotype file, the second time, recode "mean" genotype and calculate K
-bool ReadFile_bed (const string &file_bed, vector<bool> &indicator_idv, vector<bool> &indicator_snp, uchar **X, gsl_matrix *K, const bool calc_K, const size_t ni_test, const size_t ns_test, const size_t ni_total, const size_t ns_total, vector<double> &SNPmean, vector <size_t> &CompBuffSizeVec, bool Compress_Flag)
+bool ReadFile_bed (const string &file_bed, vector<bool> &indicator_idv, vector<bool> &indicator_snp, gsl_matrix *X, gsl_matrix *K, const bool calc_K, const size_t ni_test, const size_t ns_test, const size_t ni_total, const size_t ns_total, vector<double> &SNPmean, vector <size_t> &CompBuffSizeVec, bool Compress_Flag)
 {
 	ifstream infile (file_bed.c_str(), ios::binary);
 	if (!infile) {cout<<"error reading bed file:"<<file_bed<<endl; return false;}
@@ -2184,8 +2121,6 @@ bool ReadFile_bed (const string &file_bed, vector<bool> &indicator_idv, vector<b
 	bitset<8> b;
     double geno, geno_mean;
 	size_t n_bit, n_miss, c_idv=0, c_snp=0, c=0;
-    int result;
-
     CompBuffSizeVec.clear();
     SNPmean.clear();
 
@@ -2203,15 +2138,6 @@ bool ReadFile_bed (const string &file_bed, vector<bool> &indicator_idv, vector<b
     //cout << "ni_test = " << ni_test << endl;
 	gsl_vector *genotype = gsl_vector_alloc (ni_test);
     uchar *geno_uchar = new uchar[ni_test];
-    size_t sourceBufferSize = (ni_test) * sizeof(uchar);
-   // size_t UnCompBufferSize=sourceBufferSize;
-    
-    const size_t BufferSize = (size_t)(compressBound(sourceBufferSize));
-    uchar * TempCompBuffer = (uchar*)malloc(BufferSize);
-    uchar * TempBuffer = (uchar*)malloc(sourceBufferSize);
-
-    size_t compressedBufferSize = BufferSize;
-    //cout << "Source Buffer Size = " << sourceBufferSize << "; Comp Buffer Bound = " << BufferSize  << endl;
 
 	//start reading genotypes
 	for (size_t t=0; t<ns_total; ++t) {
@@ -2253,24 +2179,29 @@ bool ReadFile_bed (const string &file_bed, vector<bool> &indicator_idv, vector<b
             geno_uchar[i] = DoubleToUchar(geno);
 		}
         gsl_vector_add_constant(genotype, -geno_mean); // center genotypes
-        
-        if (Compress_Flag) {
-            compressedBufferSize = BufferSize;
-            result = compress(TempCompBuffer, &compressedBufferSize, geno_uchar, sourceBufferSize);
-            if (result != Z_OK) {
-                zerr(result);
-                exit(-1);
-            }
-            else {
-                X[c_snp] = (uchar*)malloc(compressedBufferSize);
-                memcpy(X[c_snp], TempCompBuffer, compressedBufferSize);
-                CompBuffSizeVec.push_back(compressedBufferSize);
-            }
+
+        gsl_vector *tempc = gsl_vector_alloc (ni_test);
+        gsl_vector_memcpy(tempc,genotype);
+        gsl_vector_mul(tempc,genotype);
+            //for loop
+        double mystd;
+        mystd=0.0;
+        //doesn't work
+        //mystd=gsl_vector_sum(tempc);
+        //instead
+        for (size_t i = 0; i < ni_test; i++)
+        {
+            mystd=mystd+gsl_vector_get(tempc,i);
         }
-        else{
-            X[c_snp] = (uchar*)malloc(sourceBufferSize);
-            memcpy(X[c_snp], geno_uchar, sourceBufferSize);
-        }
+        mystd/=(double)(ni_test-1);
+        mystd = sqrt(mystd);
+        gsl_vector_scale(genotype,1/mystd);
+        //meeting:scale
+        gsl_matrix_set_col(X, c_snp, genotype);
+            //cout some snps
+        cout << "success standardize vector in bed";
+
+
 		
 		if (calc_K) {gsl_blas_dsyr (CblasUpper, 1.0, genotype, K);}
 		
@@ -2279,6 +2210,7 @@ bool ReadFile_bed (const string &file_bed, vector<bool> &indicator_idv, vector<b
     //cout << "compressed Buffer size = " << compressedBufferSize << endl;
     //cout << "CompBuffSizeVec length = " << CompBuffSizeVec.size() << endl;
     
+    //questions:if not equal, should we need to change matrix X?
 	if(c_snp != ns_test) cout <<"# of readed SNP not equal to ns_test \n";
 	
 	if (calc_K) {
@@ -2292,8 +2224,6 @@ bool ReadFile_bed (const string &file_bed, vector<bool> &indicator_idv, vector<b
 		}
 	}
 	
-    free(TempBuffer);
-    free(TempCompBuffer);
 	gsl_vector_free (genotype);
     delete [] geno_uchar;
     
@@ -2371,54 +2301,48 @@ void WriteVector(const gsl_vector * X, const string file_str){
     return;
 }
 
-// Read summary score statistics file for the first time
-bool ReadFile_score(const string &file_score, vector<SNPINFO> &snpInfo, map<string, size_t> &mapScoreKey2Pos, map<string, size_t> &mapLDKey2Pos, vector<double> &pval_vec, vector<pair<size_t, double> >  &pos_ChisqTest, vector<double> &U_STAT, vector<double> &SQRT_V_STAT, vector<double> &xtx_vec, vector<double> &snp_var_vec, size_t &ns_test, size_t &ns_total, vector<double> &mbeta, vector<double> &mbeta_SE, vector <bool> &indicator_snp, const size_t &ni_test, const double &maf_level, const double &hwe_level, const double &pheno_var, const vector< vector<double> >  &LD_ref, const bool &use_xtx_LD)
+//Lei's change
+// Read summary score statistics file (only read for once, after LD correlation file)
+bool ReadFile_score(const string &file_score, vector<SNPPOS> &snp_pos, map<string, size_t> &mapScoreKey2Pos, map<string, size_t> &mapLDKey2Pos, vector<double> &pval_vec, vector<pair<size_t, double> >  &pos_ChisqTest, vector<double> &Z_SCORE, size_t &ns_test, size_t &ns_total, vector<double> &mbeta, vector <bool> &indicator_snp, const size_t &ni_test, const double &maf_level)
 {
     string line;
     char *pch, *nch;
-
     string rs, chr, minor, major, key;
-    double maf_i, p_score, u_i, v_i, beta_i, beta_se_i;
-    double hwe_pval, xtx_i, snp_var_i , chisq_i;
-    bool u_na, v_na, beta_na, beta_se_na, p_score_na, maf_na;
+    double maf_i, p_score, z_i, beta_i, chisq_i;
     long int b_pos=0;
-    size_t pos_ld;
-
     // dummy variable for SNPINFO
     vector<bool> indicator_func_temp;
-    vector<double> weight_temp;
-
-    snpInfo.clear();
+    snp_pos.clear();
     mapScoreKey2Pos.clear();
     pval_vec.clear();
     pos_ChisqTest.clear();
-    U_STAT.clear();
-    SQRT_V_STAT.clear();
-    xtx_vec.clear();
-    snp_var_vec.clear();
+    Z_SCORE.clear();
     ns_test = 0;
     ns_total = 0;
     mbeta.clear();
-    mbeta_SE.clear();
     indicator_snp.clear();
 
-    igzstream infile_score (file_score.c_str(), igzstream::in);
-    if (!infile_score) {cout<<"error opening score statistic file : "<<file_score<<endl; return false;}
+    cout << "Number of test sample size from input is = " << ni_test << endl;
 
-    while (!safeGetline(infile_score, line).eof()) {
+    igzstream infile_score (file_score.c_str(), igzstream::in);
+    if (!infile_score) {cout<<"error opening z_score statistic file : "<<file_score<<endl; return false;}
+
+    while (!safeGetline(infile_score, line).eof())
+    {
         
         if (line[0] == '#') 
             { continue; }
-        else {
-            maf_na = false; u_na = false; v_na = false; 
-            beta_na = false; beta_se_na = false; p_score_na = false;
+        else
+        {
+            maf_i = -9;
 
             pch = (char *)line.c_str();
             nch = strchr(pch, '\t');
             chr.assign(pch, nch-pch);
+            //cout<<"read chr"<<endl;
 
             if(nch == NULL) {
-                perror("Wrong data format in summary score statistic file");
+                perror("Wrong data format in summary z_score statistic file");
                 exit(-1);
             }
             else
@@ -2427,9 +2351,10 @@ bool ReadFile_score(const string &file_score, vector<SNPINFO> &snpInfo, map<stri
                 nch = strchr(pch, '\t');
                 b_pos = strtol(pch, NULL, 0);
             }
+            //cout<<"red pos"<<endl;
 
             if(nch == NULL) {
-                perror("Wrong data format in summary score statistic file");
+                perror("Wrong data format in summary z_score statistic file");
                 exit(-1);
             }
             else
@@ -2438,9 +2363,10 @@ bool ReadFile_score(const string &file_score, vector<SNPINFO> &snpInfo, map<stri
                 nch = strchr(pch, '\t');
                 rs.assign(pch, nch-pch);
             }
+            //cout<<"read rs"<<endl;
 
             if(nch == NULL) {
-                perror("Wrong data format in summary score statistic file");
+                perror("Wrong data format in summary z_score statistic file");
                 exit(-1);
             }
             else
@@ -2450,9 +2376,10 @@ bool ReadFile_score(const string &file_score, vector<SNPINFO> &snpInfo, map<stri
                 major.assign(pch, nch-pch);
                 transform(major.begin(), major.end(), major.begin(), ::toupper);
             }
+            //cout<<"read major"<<endl;
 
             if(nch == NULL) {
-                perror("Wrong data format in summary score statistic file");
+                perror("Wrong data format in summary z_score statistic file");
                 exit(-1);
             }
             else
@@ -2460,21 +2387,25 @@ bool ReadFile_score(const string &file_score, vector<SNPINFO> &snpInfo, map<stri
                 pch = nch+1;
                 nch = strchr(pch, '\t');
                 minor.assign(pch, nch-pch);
+                if( minor.find(',') != string::npos ){
+                    minor=minor.substr(0, minor.find(','));
+                }
                 transform(minor.begin(), minor.end(), minor.begin(), ::toupper);
             }
+            //cout<<"read minor"<<endl;
 
             if(nch == NULL) {
-                perror("Wrong data format in summary score statistic file");
+                perror("Wrong data format in summary z_score statistic file");
                 exit(-1);
             }
             else
             {
                 pch = nch+1;
                 nch = strchr(pch, '\t');
-            } //  N_INFO, sample size not used
+            } //  Test sample size in Z-score file
 
             if(nch == NULL) {
-                perror("Wrong data format in summary score statistic file");
+                perror("Wrong data format in summary z_score statistic file");
                 exit(-1);
             }
             else
@@ -2484,199 +2415,62 @@ bool ReadFile_score(const string &file_score, vector<SNPINFO> &snpInfo, map<stri
                 if( pch[0] != 'N' )
                		{ 
                			maf_i = strtod(pch, NULL); 
-               			if( (maf_i < maf_level) || ((1-maf_i) < maf_level) )
-	                       { ns_total++; continue; }
-               		}
-            	else { maf_na = true; }
-            } 
-        
-            if(nch == NULL) {
-                perror("Wrong data format in summary score statistic file");
-                exit(-1);
-            }
-            else
-            {
-                pch = nch+1;
-                nch = strchr(pch, '\t');
-                if( pch[0] != 'N' )
-                { 
-                    hwe_pval = strtod(pch, NULL); 
-                    if(hwe_pval < hwe_level)
-                        { ns_total++; continue; }
-                }
-            } //  HWE_PVALUE
-
-            if(nch == NULL) {
-                perror("Wrong data format in summary score statistic file");
-                exit(-1);
-            }
-            else
-            {
-                pch = nch+1;
-                nch = strchr(pch, '\t');
-                if( pch[0] != 'N' )
-               		{ u_i = strtod(pch, NULL); }
-            	else { u_na = true; }
-            } //  U_STAT
-
-            if(nch == NULL) {
-                perror("Wrong data format in summary score statistic file");
-                exit(-1);
-            }
-            else
-            {
-                pch = nch+1;
-                nch = strchr(pch, '\t');
-                if( pch[0] != 'N' )
-               		{ v_i = strtod(pch, NULL); }
-            	else { v_na = true; }
-            } //  SQRT_V_STAT
-
-            if(nch == NULL) {
-                perror("Wrong data format in summary score statistic file");
-                exit(-1);
-            }
-            else
-            {
-                pch = nch+1;
-                nch = strchr(pch, '\t');
-                if( pch[0] != 'N' )
-               		{ beta_i = strtod(pch, NULL); }
-            	else { beta_na = true; }
-            } //  BETA
-
-            if(nch == NULL) {
-                perror("Wrong data format in summary score statistic file");
-                exit(-1);
-            }
-            else
-            {
-                pch = nch+1;
-                nch = strchr(pch, '\t');
-                if( pch[0] != 'N' )
-               		{ beta_se_i = strtod(pch, NULL); }
-            	else { beta_se_na = true; }
-            } //  BETA_SE
-
-            if(nch == NULL) {
-                perror("Wrong data format in summary score statistic file");
-                exit(-1);
-            }
-            else
-            {
-                pch = nch+1;
-                nch = strchr(pch, '\t');
-                if( pch[0] != 'N' )
-               		{ 
-                        p_score = strtod(pch, NULL); 
-                        chisq_i = gsl_cdf_chisq_Qinv(p_score, 1);
-                    }
-            	else { p_score_na = true; }          
-            } // pvalue
-
-            // fill in snpID values
-            key = chr + ":" + to_string(b_pos) + ":" + major + ":" + minor;
-            if(rs.compare(".") == 0 || rs.empty())
-                { rs = key; }
-
-            // Set xtx_vec values
-            if(mapLDKey2Pos.count(key) == 0){
-                    SwapKey(key);
-                    if(mapLDKey2Pos.count(key) == 0){
-                        //snp dose not have reference covariance info
-                        ns_total++; continue;
-                    }else{
-                        if(use_xtx_LD){
-                            pos_ld = mapLDKey2Pos[key];
-                            snp_var_i = LD_ref[pos_ld][0];
-                            xtx_i = snp_var_i * (double) ni_test;
-                        }
-                        else if( (!u_na) && (!beta_na) && (beta_i != 0) ){
-                            xtx_i = u_i / beta_i ;
-                            snp_var_i = xtx_i / (double)ni_test;
-                        }
-                        else if(!maf_na){
-                            snp_var_i = 2.0 * maf_i * (1.0 - maf_i);
-                            xtx_i = snp_var_i * (double)ni_test;
-                        }else{
+               			if( (maf_i < maf_level) || ((1.0 - maf_i) < maf_level) )
+	                    {
                             ns_total++; continue;
                         }
+               		}
+            }
+            //cout<<"Read maf"<<endl;
+
+            if(nch == NULL) {
+                perror("Wrong data format in summary z_score statistic file");
+                exit(-1);
+            }
+            else
+            {
+                pch = nch+1;
+                nch = strchr(pch, '\t');
+                if( pch[0] != 'N' )
+               		{
+                        z_i = strtod(pch, NULL);
+                        beta_i = z_i / sqrt((double)ni_test) ;
+                        chisq_i = z_i * z_i;
+                        p_score = gsl_cdf_chisq_Q(chisq_i, 1);
                     }
-            }
-            else{
-                if(use_xtx_LD){
-                    pos_ld = mapLDKey2Pos[key];
-                    snp_var_i = LD_ref[pos_ld][0];
-                    xtx_i = snp_var_i * (double) ni_test;
+            	else {
+                    ns_total++;
+                    cout << "Filter out SNP " << key<< " with NA Z-score value... \n"<<endl;
+                    continue;
                 }
-                else if( (!u_na) && (!beta_na) && (beta_i != 0) ){
-                    xtx_i = u_i / beta_i ;
-                    snp_var_i = xtx_i / (double)ni_test;
-                }else if(!maf_na){
-                    snp_var_i = 2.0 * maf_i * (1.0 - maf_i);
-                    xtx_i = snp_var_i * (double)ni_test;
-                }else{
-                    ns_total++; continue;
-                }
-            }
+            } //  Z-SCORE
+            //cout<<"run zscore"<<endl;
 
-            if( u_na && (!beta_na) ){
-                u_i = xtx_i * beta_i;
-                u_na = false;
-            }else if ( u_na && beta_na ){
-            	cerr << "Effect size is NA for variant " << key << "\t" <<  rs << endl;
-            	ns_total ++; continue;
-            }
+            // fill in snp ID values and setup key
+            key = chr + ":" + to_string(b_pos) + ":" + major + ":" + minor;
+            if(rs.compare(".") == 0 || rs.empty() )
+                { rs = key; }
+            // cout<<key<<endl;
 
-            if (v_na){
-            	v_i = sqrt(xtx_i * pheno_var);
-                v_na = false;
-            }
-
-            if( beta_na && (!u_na) && (xtx_i > 0) ){
-            	beta_i = u_i / xtx_i;
-            	beta_na = false;
-            }
-
-            if(beta_se_na){
-                if( (!beta_na) &&  (xtx_i > 0) &&  (ni_test > 2) ){
-                    beta_se_i = (pheno_var * (ni_test - 1) / xtx_i - beta_i * beta_i) / (ni_test - 2);
-                    if (beta_se_i < 0) {beta_se_i = -9;}
-                    else{ beta_se_na = false; }
-                }else{
-                    beta_se_i = -9;
-                }
-            }
-
-            if(p_score_na){
-                if( (!u_na) && (!v_na) ){
-                    chisq_i = u_i * u_i / (v_i * v_i);
-                    p_score = gsl_cdf_chisq_Q(chisq_i, 1);
-                    p_score_na = false;
-                }else if ( (!beta_na) && (!beta_se_na)) {
-                    chisq_i = beta_i * beta_i / (beta_se_i * beta_se_i);
-                    p_score = gsl_cdf_chisq_Q(chisq_i, 1);
-                    p_score_na = false;
-                }
-                else{
-                    chisq_i = -9;
-                    p_score = -9;
+            // Exclude SNP if not present in LD file
+            if(mapLDKey2Pos.count(key) == 0){
+                SwapKey(key);
+                if(mapLDKey2Pos.count(key) == 0){
+                    ns_total++;
+                    continue;
                 }
             }
 
             // record ns_test as the positions
-            SNPINFO sInfo = {chr, rs, -9, b_pos, minor, major, -9, -9, maf_i, indicator_func_temp, weight_temp, 0.0, key};
-            snpInfo.push_back( sInfo );
-		    mapScoreKey2Pos[key] = ns_test;
+            // only save test SNPs
+            SNPPOS snp_temp = {ns_test, rs, chr, b_pos, minor, major, maf_i, indicator_func_temp, key};
+            snp_pos.push_back( snp_temp );
+		    mapScoreKey2Pos[key] = ns_test; // map to position in snpInfo
 		    pval_vec.push_back(p_score);
 		    pos_ChisqTest.push_back( make_pair(ns_test, chisq_i) );
-		    U_STAT.push_back(u_i);
-		    SQRT_V_STAT.push_back(v_i);
-		    xtx_vec.push_back(xtx_i);
-            snp_var_vec.push_back(snp_var_i);
+            Z_SCORE.push_back(z_i);
 		    mbeta.push_back(beta_i);
-		    mbeta_SE.push_back(beta_se_i);
-            indicator_snp.push_back(1);
+            indicator_snp.push_back(1); // length of ns_test
 		    ns_test++;
             ns_total++;
         }
@@ -2685,15 +2479,17 @@ bool ReadFile_score(const string &file_score, vector<SNPINFO> &snpInfo, map<stri
     infile_score.close();
     infile_score.clear();
 
-    cout << "\nLoading score statistics file " <<  file_score << " success ! "<<endl; 
+    cout << "\nLoading Zscore statistics file " <<  file_score << " success ! "<<endl;
     cout << "Total number of variants is " << ns_total  << endl; 
     cout << "Number of analyzed variants is " << ns_test << endl;
+    cout << "Z_SCORE vector length : " << Z_SCORE.size() << endl;
+    cout << "mbeta vector length : " << mbeta.size() << endl;
     return true;
 }
 
 
 //Read function annotation file when reading summary statistics
-bool ReadFile_anno (const string &file_anno, const string &file_func_code, map<string, size_t> &mapScoreKey2Pos, map<string, int> &mapFunc2Code, vector<SNPINFO> &snpInfo, size_t &n_type, vector<size_t> &mFunc)
+bool ReadFile_anno (const string &file_anno, const string &file_func_code, map<string, size_t> &mapScoreKey2Pos, map<string, int> &mapFunc2Code, vector<SNPPOS> &snp_pos, size_t &n_type, vector<size_t> &mFunc)
 {
     string line;
     char *pch, *nch;
@@ -2708,13 +2504,11 @@ bool ReadFile_anno (const string &file_anno, const string &file_func_code, map<s
     if (!infile_code) {cout<<"error opening annotation file: "<<file_func_code<<endl; return false;}
 
     while (!safeGetline(infile_code, line).eof()) {
-        
         if (line[0] == '#') {
             pch = (char *)line.c_str();
             nch = strchr(pch, '\t');
             n_type = strtol(nch, NULL, 0);
             // cout << "Number of annotation categories" << n_type << endl;            
-            mFunc.assign(n_type, 0);
             continue;
         }
         else {
@@ -2729,13 +2523,15 @@ bool ReadFile_anno (const string &file_anno, const string &file_func_code, map<s
     infile_code.close();
     infile_code.clear();
     
+    cout << "Number of annotation categories: " << n_type << endl;
+    mFunc.assign(n_type, 0);
     // Load annotation file...
     // cout<<"Reading annotation file: "<<file_anno<<endl; 
     igzstream infile (file_anno.c_str(), igzstream::in);
     if (!infile) {cout<<"error opening annotation file: "<<file_anno<<endl; return false;}
     
     // read function annotation file
-    string rs, chr, ref, alt, key;
+    string rs, chr, ref, alt, key, temp;
     long int b_pos=0;
     size_t snp_i = 0;
 
@@ -2759,13 +2555,19 @@ bool ReadFile_anno (const string &file_anno, const string &file_func_code, map<s
 
             nch = strchr(pch, '\t');
             ref.assign(pch, nch-pch); //ref
+            transform(ref.begin(), ref.end(), ref.begin(), ::toupper);
             pch = (nch == NULL) ? NULL : nch+1;
 
             nch = strchr(pch, '\t');
             alt.assign(pch, nch-pch); //alt
+            if( alt.find(',') != string::npos ){
+                alt=alt.substr(0, alt.find(','));
+            }
+            transform(alt.begin(), alt.end(), alt.begin(), ::toupper);
             pch = (nch == NULL) ? NULL : nch+1;
             
             key = chr + ":" + to_string(b_pos) + ":" + ref + ":" + alt;
+
             if(mapScoreKey2Pos.count(key) == 0) 
             {
                 SwapKey(key);
@@ -2773,100 +2575,79 @@ bool ReadFile_anno (const string &file_anno, const string &file_func_code, map<s
                     continue;
                 }
             } //not in the Summary Score Statistic file
-            else{ snp_i = mapScoreKey2Pos[key] ; } // map to the variant position in score.txt 
-
-            snp_nfunc = 0;
-            snpInfo[snp_i].indicator_func.assign(n_type, 0);
-
-            //if (snp_i < 5)  cout << rs << ":chr" << chr << ":bp"<< b_pos <<endl;
+            snp_i = mapScoreKey2Pos[key] ;  // map to the variant position in score.txt
+            snp_pos[snp_i].indicator_func.assign(n_type, 0);
+            // read annotation column
             if( isalpha(pch[0]) || isdigit(pch[0]) ){
                 //pch[0] is a letter or number
                 while (pch != NULL) {
                     nch = strchr(pch, ',');
                     if (nch == NULL) func_type.assign(pch);
                     else func_type.assign(pch, nch-pch);
-
                     func_code = mapFunc2Code[func_type];
                     //if(snp_i < 10)  cout << func_type << " with code " << func_code << endl;
-                    if(!snpInfo[snp_i].indicator_func[func_code])
-                    {
-                        snpInfo[snp_i].indicator_func[func_code] = 1;
-                        snp_nfunc++;
-                    }
-                    pch = (nch == NULL) ? NULL : nch+1;
+                    snp_pos[snp_i].indicator_func[func_code] = 1;
+                    mFunc[func_code]++;
+                    break;
                 }
             }
             else{
                 func_type.assign("NA");
                 func_code = mapFunc2Code[func_type];
-                //if(snp_i < 10)  cout << "NA" << " with code " << func_code << endl;
-                if(!snpInfo[snp_i].indicator_func[func_code])
-                    {
-                        snpInfo[snp_i].indicator_func[func_code] = 1;
-                        snp_nfunc++;
-                    }
-            }
-
-            if (snp_nfunc == 1)
-              {
+                snp_pos[snp_i].indicator_func[func_code] = 1;
                 mFunc[func_code]++;
-              }
-
-            
-            //if ((snp_nfunc > 0) && (snp_nfunc <= n_type))
-            /*
-            if (snp_nfunc == 1)
-              {
-                snpInfo[snp_i].weight_i = 1.0 ;// / (double)snp_nfunc;
-                mFunc[func_code]++;
-              }
-            else if (snp_nfunc == 0) {
-                snpInfo[snp_i].weight_i = 0.0;
-                cout << "function annotation is NULL \n ";
             }
-            else {cerr << "ERROR: snp_nfunc = " <<snp_nfunc<< " ... \n"; exit(-1);}
-            */
-
         }
     }
-    cout << "Number of annotation categories: " << n_type << endl;
     cout << "Number of variants per category: "; PrintVector(mFunc);
-    
     infile.close();
     infile.clear(); 
-
     return true;
 }
 
 
 // REVISE 07/26/2018
 // Read reference LDcorr.txt.gz file
-bool ReadFile_corr(const string &file_cov, const size_t &ns_test, const vector <SNPINFO> &snpInfo, vector< vector<double> >  &LD_ref, map<string, size_t> &mapLDKey2Pos)
+bool ReadFile_corr(const string &file_corr, vector< vector<double> >  &LD_ref, map<string, size_t> &mapLDKey2Pos)
 {
-    cout << "\nStart loading LD correlation file ... \n";
-    size_t n_snp, n_snp_score; // record position in cov file
-    LD_ref.clear(); // Reference LD matrix from the LDR2.txt file
+    cout << "\nFirst loading LD correlation file ... \n";
+    size_t n_snp; // record position in cov file
+    LD_ref.clear(); // Reference LD matrix from the LDR2.txt file; save SNPs in the order as in the reference correlation file
     mapLDKey2Pos.clear();
 
     string line;
     char *pch, *nch, *mch;
-    string chr, minor, major, rs, key;
-    long int b_pos;
+    string chr, minor, major, rs, mykey ,key , ID;
+    long int b_pos, snp_order;
     double r;
 
-    igzstream infile_cov (file_cov.c_str(), igzstream::in);
-    if (!infile_cov) 
-        {cout<<"error opening LD correlation file: "<<file_cov<<endl; return false;}
+    igzstream infile_cov (file_corr.c_str(), igzstream::in);
+    // printf("igzstream run\n");
 
-    n_snp = 0; 
+    if (!infile_cov) 
+        {cout<<"error opening LD correlation file: "<<file_corr<<endl; return false;}
+
+    n_snp = 0; // record SNP row orders in LD file
     while (!safeGetline(infile_cov, line).eof()) {
         if (line[0] == '#') {
-            continue;
+            continue; // skip headers starting with #
         }
         else {
+            //Lei's change
             pch = (char *)line.c_str();
             nch = strchr(pch, '\t');
-            chr.assign(pch, nch-pch); //chr
+            snp_order = strtol(pch, NULL, 0); //#0, SNP order in LD file
+
+            if(nch == NULL) {
+                perror("Wrong data format in summary corr file");
+                exit(-1);
+            }
+            else
+            {
+                pch = (nch == NULL) ? NULL : nch+1;
+                nch = strchr(pch, '\t');
+                chr.assign(pch, nch-pch);
+            } // chr
 
             if(nch == NULL) {
                 perror("Wrong data format in summary corr file");
@@ -2876,8 +2657,8 @@ bool ReadFile_corr(const string &file_cov, const size_t &ns_test, const vector <
             {
                 pch = nch+1;
                 nch = strchr(pch, '\t');
-                b_pos = strtol(pch, NULL, 0); // base position
-            }
+                b_pos = strtol(pch, NULL, 0);
+            } // base position
 
             if(nch == NULL) {
                 perror("Wrong data format in summary corr file");
@@ -2887,8 +2668,8 @@ bool ReadFile_corr(const string &file_cov, const size_t &ns_test, const vector <
             {
                 pch = (nch == NULL) ? NULL : nch+1;
                 nch = strchr(pch, '\t');
-                rs.assign(pch, nch-pch); // rsID
-            }
+                rs.assign(pch, nch-pch);
+            } // rsID
 
             if(nch == NULL) {
                 perror("Wrong data format in summary corr file");
@@ -2898,9 +2679,9 @@ bool ReadFile_corr(const string &file_cov, const size_t &ns_test, const vector <
             {
                 pch = (nch == NULL) ? NULL : nch+1;
                 nch = strchr(pch, '\t');
-                major.assign(pch, nch-pch); // Reference allele
+                major.assign(pch, nch-pch);
                 transform(major.begin(), major.end(), major.begin(), ::toupper);
-            }
+            } // Reference allele
 
             if(nch == NULL) {
                 perror("Wrong data format in summary corr file");
@@ -2910,9 +2691,12 @@ bool ReadFile_corr(const string &file_cov, const size_t &ns_test, const vector <
             {
                 pch = (nch == NULL) ? NULL : nch+1;
                 nch = strchr(pch, '\t');
-                minor.assign(pch, nch-pch); // Minor allele
+                minor.assign(pch, nch-pch);
+                if( minor.find(',') != string::npos ){
+                    minor=minor.substr(0, minor.find(','));
+                }
                 transform(minor.begin(), minor.end(), minor.begin(), ::toupper);
-            }
+            } // Minor allele
 
             if(nch == NULL) {
                 perror("Wrong data format in summary corr file");
@@ -2921,8 +2705,8 @@ bool ReadFile_corr(const string &file_cov, const size_t &ns_test, const vector <
             else
             {
                 pch = nch+1;
-                nch = strchr(pch, '\t'); // sample size
-            }
+                nch = strchr(pch, '\t');
+            } // sample size
 
             if(nch == NULL) {
                 perror("Wrong data format in summary corr file");
@@ -2931,7 +2715,7 @@ bool ReadFile_corr(const string &file_cov, const size_t &ns_test, const vector <
             else
             {
                 pch = nch+1;
-                nch = strchr(pch, '\t'); // sample size
+                nch = strchr(pch, '\t');
             } // MAF
 
             key = chr + ":" + to_string(b_pos) + ":" + major + ":" + minor;
@@ -2957,14 +2741,12 @@ bool ReadFile_corr(const string &file_cov, const size_t &ns_test, const vector <
             }
             //if(n_snp < 5) cout << n_snp << "th row of LD_ref has vec size : " << LD_ref[n_snp].size() << endl;
             n_snp++;
-            
         }
     }
-    cout << "Number of variants in LDR2.txt file is " << n_snp << endl;
-    cout << "Load " << file_cov << " Success ... \n";
+    cout << "Number of variants (rows) in LD file is " << n_snp << endl;
+    cout << "Load " << file_corr << " Success ... \n";
     infile_cov.close();
     infile_cov.clear();
-
     return true;
 }
 

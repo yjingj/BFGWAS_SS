@@ -675,7 +675,8 @@ void LM::AnalyzePlink (const gsl_matrix *W, const gsl_vector *y)
 
 
 //make sure that both y and X are centered already
-void MatrixCalcLmLR (uchar **X, const gsl_vector *y, vector<pair<size_t, double> > &pos_loglr, const size_t &ns_test, const size_t &ni_test, double &trace_G, std::vector <size_t> &CompBuffSizeVec, size_t UnCompBufferSize, bool Compress_Flag)
+//Lei's change
+void MatrixCalcLmLR (gsl_matrix *X, const gsl_vector *y, vector<pair<size_t, double> > &pos_loglr, const size_t &ns_test, const size_t &ni_test, double &trace_G, std::vector <size_t> &CompBuffSizeVec, size_t UnCompBufferSize, bool Compress_Flag)
 {
     trace_G=0.0;
     gsl_vector *xvec = gsl_vector_alloc(ni_test);
@@ -699,8 +700,8 @@ void MatrixCalcLmLR (uchar **X, const gsl_vector *y, vector<pair<size_t, double>
 }
 
 
-//
-void MatrixCalcLmLR (uchar **X, const gsl_vector *y, vector<pair<size_t, double> > &pos_loglr, const size_t &ns_test, const size_t &ni_test, const vector<double> &SNPmean, vector<double> &Gvec, vector<double> &XtX_diagvec, const vector<SNPPOS> &snp_pos, std::vector <size_t> &CompBuffSizeVec, size_t UnCompBufferSize, bool Compress_Flag, const vector<pair<int, double> > &UcharTable)
+//lei's change
+void MatrixCalcLmLR (gsl_matrix *X, const gsl_vector *y, vector<pair<size_t, double> > &pos_loglr, const size_t &ns_test, const size_t &ni_test, const vector<double> &SNPmean, vector<double> &Gvec, vector<double> &XtX_diagvec, const vector<SNPPOS> &snp_pos, std::vector <size_t> &CompBuffSizeVec, size_t UnCompBufferSize, bool Compress_Flag, const vector<pair<int, double> > &UcharTable)
 {
     size_t n_type = snp_pos[0].indicator_func.size();
     Gvec.assign(n_type, 0.0);
@@ -713,7 +714,10 @@ void MatrixCalcLmLR (uchar **X, const gsl_vector *y, vector<pair<size_t, double>
     
 	for (size_t i=0; i<ns_test; ++i) {
         
-        getGTgslVec(X, xvec, i, ni_test, ns_test, SNPmean, CompBuffSizeVec, UnCompBufferSize, Compress_Flag, UcharTable);
+        //lei's change
+        //copy the column
+        gsl_matrix_get_col(xvec,X,i);
+        //getGTgslVec(X, xvec, i, ni_test, ns_test, SNPmean, CompBuffSizeVec, UnCompBufferSize, Compress_Flag, UcharTable);
         gsl_blas_ddot(xvec, xvec, &xtx);
         
         XtX_diagvec.push_back(xtx);
@@ -736,7 +740,7 @@ void MatrixCalcLmLR (uchar **X, const gsl_vector *y, vector<pair<size_t, double>
 }
 
 //calculate Z-Scores, beta_marginal, beta_SE; used in EM_block
-void MatrixCalcLmLR (uchar **X, const gsl_vector *y, vector<pair<size_t, double> > &pos_loglr, const size_t &ns_test, const size_t &ni_test, const vector<double> &SNPmean, vector<double> &Gvec, vector<double> &XtX_diagvec, vector<double> &Z_scores, vector<double> &beta_marginal,vector<double> &beta_SE, vector<double> &pval_lrt, const vector<SNPPOS> &snp_pos, std::vector <size_t> &CompBuffSizeVec, size_t UnCompBufferSize, bool Compress_Flag, const vector<pair<int, double> > &UcharTable)
+void MatrixCalcLmLR (gsl_matrix *X, const gsl_vector *y, vector<pair<size_t, double> > &pos_loglr, const size_t &ns_test, const size_t &ni_test, const vector<double> &SNPmean, vector<double> &Gvec, vector<double> &XtX_diagvec, vector<double> &Z_scores, vector<double> &beta_marginal,vector<double> &beta_SE, vector<double> &pval_lrt, const vector<SNPPOS> &snp_pos, std::vector <size_t> &CompBuffSizeVec, size_t UnCompBufferSize, bool Compress_Flag, const vector<pair<int, double> > &UcharTable)
 {
     size_t n_type = snp_pos[0].indicator_func.size();
     Gvec.assign(n_type, 0.0);
@@ -752,8 +756,11 @@ void MatrixCalcLmLR (uchar **X, const gsl_vector *y, vector<pair<size_t, double>
     //cout << "calcLR: yty = " << yty << endl;
     
 	for (size_t i=0; i<ns_test; ++i) {
-        
-        getGTgslVec(X, xvec, i, ni_test, ns_test, SNPmean, CompBuffSizeVec, UnCompBufferSize, Compress_Flag, UcharTable);
+        //lei's change
+        //copy the column
+        gsl_matrix_get_col(xvec,X,i);
+
+        //getGTgslVec(X, xvec, i, ni_test, ns_test, SNPmean, CompBuffSizeVec, UnCompBufferSize, Compress_Flag, UcharTable);
         gsl_blas_ddot(xvec, xvec, &xtx);
         //if(i < 10) cout << xtx << ";";
 

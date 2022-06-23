@@ -1,108 +1,104 @@
 # rm(list=ls(all=TRUE))
+library(tidyverse)
 
 ####### Source Util Functions and set data directories
-source("/home/jyang/GIT/bfGWAS_SS/bin/R_funcs.r")
+source("/home/jyang/GIT/BFGWAS_SS/bin/R_funcs.r")
 
-DataDir = "/home/jyang/GIT/bfGWAS_SS/1KG_example/ExData/" # example data directory
-OutDir = "/home/jyang/GIT/bfGWAS_SS/1KG_example/AnalyzeResults/" # directory to save plots
-ResultDir = "/home/jyang/GIT/bfGWAS_SS/1KG_example/Test_Wkdir" # result directory
+DataDir = "/home/jyang/GIT/BFGWAS_SS/1KG_example/ExData/" # example data directory
+OutDir = "/home/jyang/GIT/BFGWAS_SS/1KG_example/AnalyzeResults/" # directory to save plots
+ResultDir = "/home/jyang/GIT/BFGWAS_SS/1KG_example/Test_Wkdir" # result directory
 
-setwd(ResultDir)
+setwd("/home/jyang/GIT/BFGWAS_SS/1KG_example/AnalyzeResults/")
+
+## True phenotype : "/net/fantasia/home/yjingj/GIT/SFBA_example/ExData/phenoAMD_1KG.txt"
+OR = read.table(file = "/home/jyang/GIT/BFGWAS_SS/1KG_example/ExData/vcfs/causalSNP_OR.txt", header = TRUE)
+paramdata_bfgwas[OR$rsID, ]
 
 ######## Compare results
-paramdata_bfgwas = LoadEMdata_bfgwas(filename="./output/CFH_REGION_1KG_bfgwas.paramtemp")
-# head(paramdata_bfgwas)
+paramdata_bfgwas = LoadEMdata(filename="/home/jyang/GIT/BFGWAS_SS/1KG_example/Test_Wkdir/Eoutput/paramtemp3.txt", header = TRUE)
+#head(paramdata_bfgwas)
+sum(paramdata_bfgwas$Pi)
 
-paramdata_indv = LoadEMdata(filename="./output/CFH_REGION_1KG_indv.paramtemp")
-# head(paramdata_indv)
+## Manhantton plot
+paramdata_bfgwas_sig <- filter(paramdata_bfgwas, Pi > 0.1)
+dim(paramdata_bfgwas_sig )
+paramdata_bfgwas_sig
 
-paramdata_ss = LoadEMdata(filename="./output/CFH_REGION_1KG_ss.paramtemp")
-# head(paramdata_ss)
-
-##
-qplot(paramdata_ss$beta, paramdata_indv$beta) 
-ggsave("comp_beta_ss.pdf")
-
-qplot(paramdata_bfgwas$beta, paramdata_indv[paramdata_bfgwas$ID, ]$beta) 
-ggsave("comp_beta_bfgwas.pdf")
-
-##
-sum(paramdata_bfgwas$pi)
-sum(paramdata_indv$pi)
-sum(paramdata_ss$pi)
-
-##
-paramdata_bfgwas[paramdata_bfgwas$pi > 0.1, ]
-# paramdata_indv[paramdata_bfgwas$ID[paramdata_bfgwas$pi > 0.1], ]
-paramdata_indv[paramdata_indv$pi > 0.1, ]
-paramdata_ss[paramdata_ss$pi > 0.1, ]
-
-## True causal variants 
-VCF_Data = fread(paste(DataDir, "vcfs/causalSNP.vcf", sep = ""), sep="\t", header=TRUE)
-Geno = VCF_Data[, 10:2513] # genotype of true causal SNPs
-Geno[Geno == "0|0"] = 0
-Geno[Geno == "1|1"] = 2
-Geno[Geno == "1|0" | Geno == "0|1"] = 1
-
-Geno = apply(Geno, 1, as.numeric)
-colnames(Geno) = VCF_Data$ID
-
-maf_df = data.frame(VCF_Data[, 1:5],  maf = apply(Geno, 2, calcMAF))
-maf_df = maf_df[maf_df$maf > 0.005, ]
-maf_df[1:3, ]
-
-# Variants that were excluded from the analysis will show NA values
-paramdata_bfgwas[maf_df$ID[1:3], ]
-paramdata_indv[maf_df$ID[1:3], ]
-paramdata_ss[maf_df$ID[1:3], ]
+ggplot(paramdata_bfgwas, aes(x=POS, y = -log10(Pval), color = Pi)) +
+	geom_point() +scale_color_gradient(low="blue", high="red") +
+	facet_grid(cols = vars(CHR), scales = "free") +
+	# geom_point(paramdata_bfgwas_sig, aes(x=POS, y = -log10(Pval), color = Pi)) +
+	geom_hline(yintercept=-log10(5e-8))
+ggsave("/home/jyang/GIT/BFGWAS_SS/1KG_example/AnalyzeResults/mp_06_2022.pdf")
 
 ## Load Phenotype
-pheno = read.table("/home/jyang/GIT/bfGWAS/1KG_example/ExData/phenoAMD_1KG.txt", header = FALSE)
+library(data.table)
+library(tidyverse)
+
+pheno = read.table("/home/jyang/GIT/BFGWAS_SS/1KG_example/ExData/phenoAMD_1KG.txt", header = FALSE)
 y = pheno$V2
+y = scale(y)
 names(y) = pheno$V1
 
-x = Geno[, 1]
-names(x) = colnames(VCF_Data)[-(1:9)]
+### Read all genotype Data
+geno_data <- fread("/home/jyang/GIT/BFGWAS_SS/1KG_example/ExData/genos/All_4REGION_1KG.geno", sep = "\t", header = TRUE)
+setkey(geno_data, "ID")
 
-x1 = x - mean(x)
-y1 = y - mean(y)
+Zscore <- fread("/home/jyang/GIT/BFGWAS_SS/1KG_example/Test_Wkdir/Zscore/All_region.Zscore.txt", sep = "\t", header = TRUE)
+setkey(Zscore, "ID")
 
-sum(y1 * x1) / sum(x1 * x1)
-sqrt( var(y1 )  * sum(x1 * x1))
+######
+paramdata_bfgwas = LoadEMdata(filename="/home/jyang/GIT/BFGWAS_SS/1KG_example/Test_Wkdir/Eoutput/paramtemp3.txt", header = TRUE)
+#head(paramdata_bfgwas)
+sum(paramdata_bfgwas$Pi)
 
-summary(lm(y[names(x)] ~ x))
+SNP_vec <- paramdata_bfgwas[paramdata_bfgwas$Pi > 0.001, ]$ID
+length(SNP_vec)
+X <- geno_data[SNP_vec, -c(1:5)] %>% t()
+colnames(X) <- SNP_vec
+
+fit = lm(y ~ ., data = data.frame(y=y, X))
+summary(fit)
+summary(fit)$adj.r.squared # Adjusted R-squared: 0.2536693
+
+beta <- paramdata_bfgwas[SNP_vec, ]$Beta
+pred_y <- as.matrix(X) %*% beta
+cor(pred_y[, 1], y)^2 #  0.2966076
+
+ggplot(paramdata_bfgwas[SNP_vec, ], aes(x = mBeta, y = Beta, col = Pi)) +
+	geom_point() + geom_abline(intercept=0, slope = 1) +
+	scale_color_gradient(low="blue", high="red")
+ggsave("/home/jyang/GIT/BFGWAS_SS/1KG_example/AnalyzeResults/beta_06_2022.pdf")
+
+SNP_vec <- paramdata_bfgwas[paramdata_bfgwas$Pval < 1e-5, ]$ID
+X <- geno_data[SNP_vec, -c(1:5)] %>% as.matrix()
+summary(lm(y ~ t(X)))$adj.r.squared # Adjusted R-squared:  0.1966276
+beta <- paramdata_bfgwas[SNP_vec, ]$mBeta
+pred_y <- t(X) %*% beta
+cor(pred_y[, 1], y)^2 # 0.1318686
+
+SNP_vec <- OR$rsID[c(1, 3, 4, 6, 7, 9, 10, 11, 12)]
+summary(lm(y ~ t(X)))$adj.r.squared # Adjusted R-squared:  0.1966276
+X <- geno_data[SNP_vec, -c(1:5)] %>% as.matrix()
+beta <- paramdata_bfgwas[SNP_vec, ]$Beta
+pred_y <- t(X) %*% beta
+cor(pred_y[, 1], y)^2 #  0.07832969
 
 ################################################
-######## Load and analyze GWAS results by bfGWAS
-paramdata = LoadEMdata(filename="./Eoutput/paramtemp5.txt")
-head(paramdata)
-
-#### Variants with association probabilities > 0.1068, potential causals
-print(paramdata[paramdata$pi>0.1068, ])
-
-#### Variants with SVT pvalue < 5e-8, by likelihood ratio tests
-paramdata[paramdata$pval_LRT<5e-8, ]
-
-#### True variants used to simulate this dataset
-VCF_Data = fread(paste(DataDir, "vcfs/causalSNP.vcf", sep = ""), sep="\t", header=TRUE)
-Causal_SNP_Result = paramdata[VCF_Data$ID, ]
-# variants that were excluded from the analysis will show NA values
-print(Causal_SNP_Result[, c(1:3, 6:10, 13), with = FALSE])
-
 ###### REMARK: you might want to check if the estimated variants with high association probability are in high LD with the true causal ones
 
 ###### Although we are not able to identify all causal variants, we can estimate the probability that there exist at least one causal variant per genome block
-system("cat \`ls output/** | grep log\` | grep Region_PIP | cut -d\" \" -f4 > Eoutput/Region_PP.txt")
-Region_PP = scan("Eoutput/Region_PP.txt", what = double())
+system("cat \`ls /home/jyang/GIT/BFGWAS_SS/1KG_example/Test_Wkdir/output/** | grep log\` | grep Region_PIP | cut -d\" \" -f4 > /home/jyang/GIT/BFGWAS_SS/1KG_example/Test_Wkdir/Eoutput/Region_PP.txt")
+Region_PP = scan("/home/jyang/GIT/BFGWAS_SS/1KG_example/Test_Wkdir/Eoutput/Region_PP.txt", what = double())
 sum(Region_PP > 0.95)
 
 ######## Load results of hyper parameters ####### 
-test_hyp <- LoadEMhyp(filename = "./Eoutput/EM_result.txt")
+test_hyp <- LoadEMhyp(filename = "/home/jyang/GIT/BFGWAS_SS/1KG_example/Test_Wkdir/Eoutput/EM_result.txt", header = TRUE)
 
 # the labels should be consistant to 0,1,2... defined in the annotation code file
 group_labels <- as.factor(c("Coding", "UTR", "Promoter", "DHS", "Intronic", "Intergenic"))
 
-test_CI_table <- CItable(test_hyp[6, ], n_type = 6, alpha = 0.95, 
+test_CI_table <- CItable(test_hyp[nrow(test_hyp), ], n_type = 6, alpha = 0.95,
 		funcgroup = group_labels)
 
 # Set the values of these categories without associations at NAs, change prior_pp value accordingly
@@ -110,10 +106,7 @@ prior_pp = 1e-6
 test_CI_table [test_CI_table$pi == prior_pp, 1:6] <- NA 
  
 # plot causal proportion estimates, requiring library "ggplot2"
-PlotCI_groupPP(hyp_table=test_CI_table, pdfname=paste(OutDir, "test_groupPP.pdf", sep =""), size = 18, tit = "")
-
-# plot effect size estimates
-PlotCI_groupESvar(hyp_table=test_CI_table, pdfname=paste(OutDir, "test_ESvar.pdf", sep =""), size = 18, tit = "")
+PlotCI_groupPP(hyp_table=test_CI_table, pdfname="/home/jyang/GIT/BFGWAS_SS/1KG_example/AnalyzeResults/test_groupPP.pdf", size = 18, tit = "")
 
 
 ######## Compare hyper estimates to the genome-wide averages

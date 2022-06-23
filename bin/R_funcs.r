@@ -1,24 +1,32 @@
 ####### Functions for logistic model
 options(stringsAsFactors=F)
+library(tidyverse)
 library(data.table)
-library(ggplot2)
 
 ##########
+calcMAF <- function(x) {
+    n = sum(!is.na(x))
+    if(n >0){
+        maf  = sum(x, na.rm = TRUE) / (2 * sum(!is.na(x))) # unfold maf
+    }else{
+        maf = NA # all samples has NA genotypes
+    }
+	return(maf)
+}
+
 require(scales)
 cubic_trans = function() trans_new("cubic", function(x) x^(1/3), function(x) x^(3))
 
-
-
 LoadEMdata <- function(filename, header = FALSE){
     paramdata = fread(filename, sep = "\t", header = header)
-    setnames(paramdata, c("chr", "bp", "ID", "ref", "alt", "maf", "func", "pi", "beta", "SE_beta", "Chisq", "pval_chisq", "rank"))
+    setnames(paramdata, c("CHR", "POS", "ID", "REF", "ALT", "MAF", "AnnoFunc_code", "Pi", "Beta", "mBeta", "Chisq", "Pval", "Rank"))
     setkey(paramdata, "ID")
     return(paramdata)
 }
 
 LoadEMdata_bfgwas <- function(filename, header = FALSE){
     paramdata = fread(filename, sep = "\t", header = header)
-    setnames(paramdata, c("ID", "chr", "bp", "ref", "alt", "maf", "func", "beta", "pi", "Zscore", "SE_beta", "LRT", "pval_LRT", "rank"))
+    setnames(paramdata, c("CHR", "POS", "ID", "REF", "ALT", "MAF", "AnnoFunc_code", "Pi", "Zscore", "SE_beta", "LRT", "Pval", "Rank"))
     setkey(paramdata, "ID")
     return(paramdata)
 }
