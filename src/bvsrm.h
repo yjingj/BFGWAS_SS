@@ -98,11 +98,11 @@ public:
     vector <double> rho_vec;
     vector <double> Gvec; // regression r2 vector per annotation
     vector <double> em_gamma; // sum_gamma per annotation
-    vector <double> theta; // global hyper parameter
-    vector <double> log_theta;
-    vector <double> log_qtheta;
+    vector <double> theta; // global hyper parameter for CPP
+    vector <double> log_theta; // log(CPP) per group
+    vector <double> log_qtheta; // log(1 - CPP)
     vector <double> theta_total;
-    vector <double> subvar, inv_subvar, log_subvar, sumbeta2; // global hyper parameter
+    vector <double> subvar, inv_subvar, log_subvar, sumbeta2; // global hyper parameter for effect size variance and precision
 
     
 	// IO related parameters

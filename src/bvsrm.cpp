@@ -900,11 +900,11 @@ double BVSRM::CalcPveLM (const gsl_matrix *UtXgamma, const gsl_vector *Uty, cons
 
 
 
-void BVSRM::setHyp(double theta_temp, double subvar_temp){
+void BVSRM::setHyp(double theta_temp, double inv_subvar_temp){
         
     // Default initial values   
     theta.assign(n_type, theta_temp);
-    subvar.assign(n_type, subvar_temp);
+    inv_subvar.assign(n_type, inv_subvar_temp);
 
     //cout << "load fixed hyper parameter values from : " << hypfile << endl;
     string line;
@@ -939,7 +939,7 @@ void BVSRM::setHyp(double theta_temp, double subvar_temp){
                     pch = nch+1;
                 }
                 if(group_idx < n_type)
-                    subvar[group_idx] = strtod(pch, NULL);
+                    inv_subvar[group_idx] = strtod(pch, NULL);
                 group_idx++;
             }
         }
@@ -949,15 +949,19 @@ void BVSRM::setHyp(double theta_temp, double subvar_temp){
 
     log_theta.clear();
     log_qtheta.clear();
+    subvar.clear();
+    log_subvar.clear();
     for(size_t i=0; i < n_type; i++){
         log_theta.push_back(log(theta[i]));
         log_qtheta.push_back(log(1.0 - theta[i]));
+        subvar.push_back(1.0 / inv_subvar[i]);
+        log_subvar.push_back(log(subvar[i]));
     }
-    
-    cout << "Initial causal probability per category = "; PrintVector(theta);
-    cout << "Initial effect-size variance per category = "; PrintVector(subvar);
-    //cout << "log_qtheta: "; PrintVector(log_qtheta); 
+    //cout << "log_subvar = "; PrintVector(log_subvar);
 
+    cout << "Initial causal probability per category = "; PrintVector(theta);
+    cout << "Initial inverse of effect-size variance per category = "; PrintVector(inv_subvar);
+    //cout << "log_qtheta: "; PrintVector(log_qtheta);
 }
 
 
@@ -1215,7 +1219,7 @@ void BVSRM::InitialMCMC (gsl_matrix *X, const gsl_vector *Uty, vector<size_t> &r
     if (cHyp.logp>logp_max) {cHyp.logp=logp_max;}
     
     //cout << "start setHyp... \n";
-    setHyp(((double)cHyp.n_gamma/(double)ns_test), sigma_a2);
+    setHyp(((double)cHyp.n_gamma/(double)ns_test), 1.0/sigma_a2);
     cHyp.theta = theta;
     cHyp.log_theta = log_theta;
     cHyp.subvar = subvar; // initial subvar vector
@@ -1917,14 +1921,6 @@ void BVSRM::MCMC (gsl_matrix *X, const gsl_vector *y, bool original_method) {
     //Initial parameters
     cout << "\nStart initializing MCMC ... \n";
     InitialMCMC (X, z, rank_old, cHyp_old, pos_loglr, snp_pos); // Initialize rank and cHyp
-       
-    inv_subvar.assign(n_type, 0.0), log_subvar.assign(n_type, 0.0);
-    for(size_t i=0; i < n_type; i++){
-        inv_subvar[i] = (1.0 / subvar[i]); 
-        log_subvar[i] = (log(subvar[i])); 
-    }
-    cout << "inv_subvar = "; PrintVector(inv_subvar);
-    //cout << "log_subvar = "; PrintVector(log_subvar);
     
     if (cHyp_old.n_gamma > 0) {
         SetXgamma (Xgamma_old, X, rank_old);
@@ -3483,7 +3479,7 @@ void BVSRM::InitialMCMC_SS (const vector< vector<double> > &LD, vector<size_t> &
     if (cHyp.logp>logp_max) {cHyp.logp=logp_max;}
 
     //cout << "start setHyp... \n";
-    setHyp(((double)cHyp.n_gamma/(double)ns_test), sigma_a2);
+    setHyp(((double)cHyp.n_gamma/(double)ns_test), 1.0 / sigma_a2);
     cHyp.theta = theta;
     cHyp.log_theta = log_theta;
     cHyp.subvar = subvar; // initial subvar vector

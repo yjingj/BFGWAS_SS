@@ -10,14 +10,14 @@ ResultDir = "/home/jyang/GIT/BFGWAS_SS/1KG_example/Test_Wkdir" # result director
 
 setwd("/home/jyang/GIT/BFGWAS_SS/1KG_example/AnalyzeResults/")
 
-## True phenotype : "/net/fantasia/home/yjingj/GIT/SFBA_example/ExData/phenoAMD_1KG.txt"
-OR = read.table(file = "/home/jyang/GIT/BFGWAS_SS/1KG_example/ExData/vcfs/causalSNP_OR.txt", header = TRUE)
-paramdata_bfgwas[OR$rsID, ]
-
 ######## Compare results
 paramdata_bfgwas = LoadEMdata(filename="/home/jyang/GIT/BFGWAS_SS/1KG_example/Test_Wkdir/Eoutput/paramtemp3.txt", header = TRUE)
 #head(paramdata_bfgwas)
 sum(paramdata_bfgwas$Pi)
+
+## True phenotype : "/net/fantasia/home/yjingj/GIT/SFBA_example/ExData/phenoAMD_1KG.txt"
+OR = read.table(file = "/home/jyang/GIT/BFGWAS_SS/1KG_example/ExData/VCFs/causalSNP_OR.txt", header = TRUE)
+paramdata_bfgwas[OR$rsID, ]
 
 ## Manhantton plot
 paramdata_bfgwas_sig <- filter(paramdata_bfgwas, Pi > 0.1)
@@ -41,7 +41,7 @@ y = scale(y)
 names(y) = pheno$V1
 
 ### Read all genotype Data
-geno_data <- fread("/home/jyang/GIT/BFGWAS_SS/1KG_example/ExData/genos/All_4REGION_1KG.geno", sep = "\t", header = TRUE)
+geno_data <- fread("/home/jyang/GIT/BFGWAS_SS/1KG_example/ExData/Genotypes/All_4REGION_1KG.geno.gz", sep = "\t", header = TRUE)
 setkey(geno_data, "ID")
 
 Zscore <- fread("/home/jyang/GIT/BFGWAS_SS/1KG_example/Test_Wkdir/Zscore/All_region.Zscore.txt", sep = "\t", header = TRUE)
@@ -93,6 +93,7 @@ Region_PP = scan("/home/jyang/GIT/BFGWAS_SS/1KG_example/Test_Wkdir/Eoutput/Regio
 sum(Region_PP > 0.95)
 
 ######## Load results of hyper parameters ####### 
+source("/home/jyang/GIT/BFGWAS_SS/bin/R_funcs.r")
 test_hyp <- LoadEMhyp(filename = "/home/jyang/GIT/BFGWAS_SS/1KG_example/Test_Wkdir/Eoutput/EM_result.txt", header = TRUE)
 
 # the labels should be consistant to 0,1,2... defined in the annotation code file
@@ -108,6 +109,7 @@ test_CI_table [test_CI_table$pi == prior_pp, 1:6] <- NA
 # plot causal proportion estimates, requiring library "ggplot2"
 PlotCI_groupPP(hyp_table=test_CI_table, pdfname="/home/jyang/GIT/BFGWAS_SS/1KG_example/AnalyzeResults/test_groupPP.pdf", size = 18, tit = "")
 
+PlotCI_groupESvar(hyp_table=test_CI_table, pdfname="/home/jyang/GIT/BFGWAS_SS/1KG_example/AnalyzeResults/test_groupESvar.pdf", size = 18, tit = "", gwas_n = 2540, scale = FALSE)
 
 ######## Compare hyper estimates to the genome-wide averages
 n_group = 6

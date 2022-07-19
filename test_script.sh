@@ -36,7 +36,7 @@ Nburnin=10000; # Burn-in iterations in MCMC
 Nmcmc=10000; # MCMC iteration number
 mkfile=${wkdir}/BFGWAS.mk
 
-anno_dir=${BFGWAS_SS_dir}/1KG_example/ExData/annos
+anno_dir=${BFGWAS_SS_dir}/1KG_example/ExData/Annotations
 anno_code=${BFGWAS_SS_dir}/1KG_example/ExData/AnnoCode6.txt
 hfile=${BFGWAS_SS_dir}/1KG_example/ExData/InitValues6.txt
 

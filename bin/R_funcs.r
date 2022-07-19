@@ -35,9 +35,9 @@ LoadEMdata_bfgwas <- function(filename, header = FALSE){
 LoadEMhyp <- function(filename, header=FALSE){
     EMhyp_data <- read.table(filename, sep = "\t", header = header)
     n_type <- (dim(EMhyp_data)[2] - 3)/4
-    temp_names <- c("Iter", "h", "loglike")
+    temp_names <- c("Iter", "h2", "loglike")
     for(i in 1:n_type){
-        temp_names <- c(temp_names, paste(c("pi", "pi_se", "sigma2", "sigma2_se"), (i-1), sep="_"))
+        temp_names <- c(temp_names, paste(c("pi", "pi_se", "tau", "tau_se"), (i-1), sep="_"))
     }
     colnames(EMhyp_data)<- temp_names
     return(EMhyp_data)
@@ -45,26 +45,24 @@ LoadEMhyp <- function(filename, header=FALSE){
 
 getCI <- function(est, est_se, alpha){
     z_alpha <- -qnorm((1-alpha)/2)
-    
     pi_low <- est - z_alpha * est_se
     if(pi_low < 0) pi_low = 0
-    
     pi_up <- est + z_alpha * est_se
     return(c(pi_low, pi_up))
 }
 
 CItable <- function(v, n_type, alpha, funcgroup=NA){
 
-    temp_table <- data.frame(pi = NA, pi_lcl = NA, pi_ucl = NA, v = NA, v_lcl = NA, v_ucl = NA, funcgroup= funcgroup)
+    temp_table <- data.frame(pi = NA, pi_lcl = NA, pi_ucl = NA, tau = NA, tau_lcl = NA, tau_ucl = NA, funcgroup= funcgroup)
     
     for(i in 1:n_type){
         pi_hat <- v[paste("pi", (i-1), sep="_")]
         pi_se <- v[paste("pi_se", (i-1), sep="_")]
 
-        sigma2_hat <- v[paste("sigma2", (i-1), sep="_")]
-        sigma2_se <- v[paste("sigma2_se", (i-1), sep="_")]
+        tau_hat <- v[paste("tau", (i-1), sep="_")]
+        tau_se <- v[paste("tau_se", (i-1), sep="_")]
 
-        temp_table[i, 1:6] <- c(pi_hat, getCI(pi_hat, pi_se, alpha), sigma2_hat, getCI(sigma2_hat, sigma2_se, alpha))
+        temp_table[i, 1:6] <- c(pi_hat, getCI(pi_hat, pi_se, alpha), tau_hat, getCI(tau_hat, tau_se, alpha))
     }
     return(temp_table)
 }
@@ -79,28 +77,23 @@ PlotCI_groupPP <- function(hyp_table, pdfname="", size = 28, tit="", wid=10, sca
         theme(text = element_text(size=size), axis.text.x = element_text(angle = 30, hjust = 0.8), plot.margin=unit(c(4,0,0,4),"pt"))
 
     if(scale){trans = "cubic"} else {trans = "identity"}
-
-    p = p + scale_y_continuous(trans="cubic", label = scientific_format())
- 
+    p = p + scale_y_continuous(trans=trans, label = scientific_format())
     ggsave(pdfname, plot = p, width = wid)
 }
 
 
-PlotCI_groupESvar <- function(hyp_table = AMDgwas_CI_table, pdfname="", size = 14, tit = "", wid=10, scale = TRUE){
+PlotCI_groupESvar <- function(hyp_table = AMDgwas_CI_table, pdfname="", size = 14, tit = "", gwas_n = 1000, wid=10, scale = TRUE){
 
-    p = ggplot(hyp_table, aes(y=v, x = funcgroup, colour=funcgroup)) + 
+    p = ggplot(hyp_table, aes(y = (1/tau)/gwas_n, x = funcgroup, colour=funcgroup)) +
         geom_point(size = 4)+ guides (colour=FALSE) + 
-        geom_errorbar(aes(ymax=v_ucl, ymin=v_lcl), width=0.5, size = 1.5) + 
+        geom_errorbar(aes(ymin = (1/tau_ucl)/gwas_n, ymax = (1/tau_lcl)/gwas_n ), width=0.5, size = 1.5) +
         labs(title = tit, x = NULL, y = "Effect-size Variance") + 
         theme_grey(base_size = size) + 
         theme(text = element_text(size=size), axis.text.x = element_text(angle = 30, hjust = 0.8), plot.margin=unit(c(4,0,0,4),"pt"))
 
     if(scale){trans = "cubic"} else {trans = "identity"}
-
-    p = p + scale_y_continuous(trans="cubic", label = scientific_format())
- 
+    p = p + scale_y_continuous(trans=trans, label = scientific_format())
     ggsave(pdfname, plot = p, width = wid)
-
 }
 
 ####### Compare group-wise estimates #######

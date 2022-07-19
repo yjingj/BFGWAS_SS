@@ -6,13 +6,14 @@ options(stringsAsFactors=F)
 args <- commandArgs(TRUE)
 # print(args)
 
-hypfile=args[[1]]
-k=as.numeric(args[[2]])
+hypfile=args[[1]] # hyper parameter values
+k=as.numeric(args[[2]]) # EM iteration
 pp = as.numeric(args[[3]]) # prior causal probability
-a_gamma = as.numeric(args[[4]]) # prior shape parameter in IG
-b_gamma = as.numeric(args[[5]]) # prior scale parameter in IG
-EM_result_file = args[[6]]
-hypcurrent_file=args[[7]]
+a_gamma = as.numeric(args[[4]]) # prior shape parameter in Gamma
+b_gamma = as.numeric(args[[5]]) # prior rate parameter in Gamma
+gwas_n = as.numeric(args[[6]]) # GWAS sample size
+EM_result_file = args[[7]]
+hypcurrent_file=args[[8]]
 
 ###### Define functions to be used
 CI_fish_pi <- function(gamma, m, a, b){
@@ -24,34 +25,37 @@ CI_fish_pi <- function(gamma, m, a, b){
 		pi_hat = a/(a+b)
 		se_pi = 0
 	}else{
-		if(pi_hat * (1-pi_hat) / (m + a + b - 2.0) > 0){
-		  se_pi = sqrt(pi_hat * (1-pi_hat) / (m + a + b - 2.0))
-		}else{se_pi=0}
+		se_pi = sqrt(pi_hat * (1-pi_hat) / (m + a + b - 2.0))
+		if(se_pi < 0){
+			se_pi=0
+		}
 	}
 	return(c(pi_hat, se_pi))
 }
 
-# Posterior estimates of signma2
-Est_sigma2 <- function(beta2, gamma, a, b){
+# Posterior estimates of tau
+Est_tau <- function(beta2, gamma, a, b, gwas_n){
 	# beta2: squared beta estimates
 	# gamma: PIP vector
 	# a, b: hyper parameters in the prior inverse-gamma distribution
-	sigma2_hat = (sum(beta2 * gamma) + 2 * b) / (sum(gamma) + 2 * (a + 1))
-	return(sigma2_hat)
+	tau_hat = (sum(gamma) + 2 * (a - 1)) / (gwas_n * sum(beta2 * gamma) + 2 * b)
+	return(tau_hat)
 }
 
-CI_fish_sigma2 <- function(beta2, gamma, a, b){
-	sigma2_hat = Est_sigma2(beta2, gamma, a, b)
-	if( (sum(gamma)- sum(gamma)/2 - (a+1) + 2*b/sigma2_hat) < 0){
-		se_sigma2=0
+CI_fish_tau <- function(beta2, gamma, a, b, gwas_n){
+	tau_hat = Est_tau(beta2, gamma, a, b, gwas_n)
+	temp = 0.5 * sum(gamma)  + (a - 1)
+	if( temp > 0)
+	{
+		se_tau = sqrt( temp ) / tau_hat
 	}else{
-		se_sigma2 = sigma2_hat * sqrt(1/(sum(gamma)  - sum(gamma)/2 - (a+1) + 2*b/sigma2_hat))
+		se_tau = 0
 	}
-	return(c(sigma2_hat, se_sigma2))
+	return(c(tau_hat, se_tau))
 }
 
 ## log prior functions
-logprior_sigma2 <- function(a, b, x){ return(-(1+a) * log(x) - b/x) }
+logprior_tau <- function(a, b, x){ return((a - 1) * log(x) - b * x) }
 
 logprior_pi <- function(a, b, x){ return((a-1) * log(x) + (b-1) * log(1 - x)) }
 
@@ -70,7 +74,7 @@ em_out_names <- c("EM_iteration", "r2", "loglike")
 for(i in 1:n_type){
 	temp_col_names <- c(temp_col_names, 
 			paste(c("m", "sum_gamma", "sum_Ebeta2"), (i-1), sep = "_"))
-	em_out_names <- c(em_out_names, paste(c("pi_est", "pi_se", "sigma2_est", "sigma2_se"), (i-1), sep = "_"))
+	em_out_names <- c(em_out_names, paste(c("pi_est", "pi_se", "tau_est", "tau_se"), (i-1), sep = "_"))
 }
 
 colnames(hypdata) <-  temp_col_names
@@ -88,7 +92,7 @@ for(i in 1:n_type){
 	 m_vec[i] <- sum(hypdata[, paste("m", (i-1), sep="_")])
 }
 
-#### updating hyper pi and sigma2 values for each group
+#### updating hyper pi and tau_beta values for each group
 hypcurrent <- NULL
 hypmat <- NULL
 sum_gamma = 0
@@ -100,14 +104,14 @@ for(i in 1:n_type){
 	sum_gamma_temp = hypdata[, paste("sum_gamma", (i-1), sep="_")]
 	sum_gamma = sum_gamma + sum(sum_gamma_temp)
 	pi_temp = CI_fish_pi(sum_gamma_temp, m_vec[i], a_beta, b_beta)
-	sigma2_temp = CI_fish_sigma2(hypdata[, paste("sum_Ebeta2", (i-1), sep="_")], sum_gamma_temp,  a_gamma, b_gamma)
-	hypcurrent <- c(hypcurrent, pi_temp, sigma2_temp)
-	# print(cbind(pi_temp, sigma2_temp))
-	hypmat <- rbind(hypmat, c(pi_temp[1], sigma2_temp[1]))
+	tau_temp = CI_fish_tau(hypdata[, paste("sum_Ebeta2", (i-1), sep="_")], sum_gamma_temp,  a_gamma, b_gamma, gwas_n)
+	hypcurrent <- c(hypcurrent, pi_temp, tau_temp)
+	# print(cbind(pi_temp, tau_temp))
+	hypmat <- rbind(hypmat, c(pi_temp[1], tau_temp[1]))
 }
 
 ########## Write out updated hyper parameter values
-colnames(hypmat) <- c("pi", "sigma2")
+colnames(hypmat) <- c("pi", "tau")
 print("hyper parameter values updates after MCMC: ")
 print(hypmat)
 write.table(format(hypmat, scientific=TRUE), 
@@ -124,7 +128,7 @@ for(i in 1:n_type){
 
 		loglike_total = loglike_total + 
 				logprior_pi(a_beta, b_beta, prehyp[i, 1]) +
-    			logprior_sigma2(a_gamma, b_gamma, prehyp[i, 2])
+    			logprior_tau(a_gamma, b_gamma, prehyp[i, 2])
     }else{
     	print("pre-hyper-parameter <= 0... ")
     }

@@ -87,8 +87,8 @@ my $burnin="10000";
 my $Nmcmc="10000";
 my $NmcmcLast="10000";
 my $pp="1e-6";
-my $a_gamma="0.1";
-my $b_gamma="100";
+my $a_gamma="1.01"; # mode 0.01; mean 1 in the gamma distribution
+my $b_gamma="1";
 
 #initialize options
 Getopt::Long::Configure ('bundling');
@@ -227,7 +227,7 @@ makeJob($tgt, $dep, @cmd);
 
 $tgt = "$wkdir/R$i.OK";
 $dep = "$wkdir/Eoutput/cp_param$i.OK $wkdir/pre_em.OK";
-@cmd = "Rscript --vanilla ${rs} $hypfile $i $pp $a_gamma $b_gamma $wkdir/Eoutput/EM_result.txt $hypcurrent >> $wkdir/Rout.txt";
+@cmd = "Rscript --vanilla ${rs} $hypfile $i $pp $a_gamma $b_gamma $Nsample $wkdir/Eoutput/EM_result.txt $hypcurrent >> $wkdir/Rout.txt";
 makeJob($tgt, $dep, @cmd);
 
 
@@ -266,7 +266,7 @@ for $i (1..$EM){
 
   $tgt = "$wkdir/R$i.OK";
   $dep = "$wkdir/Eoutput/cp_param$i.OK";
-  @cmd = "Rscript --vanilla $rs $hypfile $i $pp $a_gamma $b_gamma $wkdir/Eoutput/EM_result.txt $hypcurrent >> $wkdir/Rout.txt";
+  @cmd = "Rscript --vanilla $rs $hypfile $i $pp $a_gamma $b_gamma $Nsample $wkdir/Eoutput/EM_result.txt $hypcurrent >> $wkdir/Rout.txt";
   makeJob($tgt, $dep, @cmd);
 
 }
