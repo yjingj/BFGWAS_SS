@@ -38,13 +38,13 @@ Est_tau <- function(beta2, gamma, a, b, gwas_n){
 	# beta2: squared beta estimates
 	# gamma: PIP vector
 	# a, b: hyper parameters in the prior inverse-gamma distribution
-	tau_hat = (sum(gamma) + 2 * (a - 1)) / (gwas_n * sum(beta2 * gamma) + 2 * b)
+	tau_hat = (sum(gamma)/gwas_n + 2 * (a - 1)) / (gwas_n * sum(beta2 * gamma) + 2 * b)
 	return(tau_hat)
 }
 
 CI_fish_tau <- function(beta2, gamma, a, b, gwas_n){
 	tau_hat = Est_tau(beta2, gamma, a, b, gwas_n)
-	temp = 0.5 * sum(gamma)  + (a - 1)
+	temp = 0.5 * sum(gamma) / gwas_n  + (a - 1)
 	if( temp > 0)
 	{
 		se_tau = sqrt( temp ) / tau_hat
