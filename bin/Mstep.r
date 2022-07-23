@@ -56,7 +56,6 @@ CI_fish_tau <- function(beta2, gamma, a, b, gwas_n){
 
 ## log prior functions
 logprior_tau <- function(a, b, x){ return((a - 1) * log(x) - b * x) }
-
 logprior_pi <- function(a, b, x){ return((a-1) * log(x) + (b-1) * log(1 - x)) }
 
 
@@ -80,8 +79,6 @@ for(i in 1:n_type){
 colnames(hypdata) <-  temp_col_names
 
 ########### Update hyper parameter values
-pve = sum(hypdata[, "r2"])
-
 prehyp <- read.table(hypcurrent_file, header=TRUE)
 print("hyper parameter values before MCMC: ")
 print(prehyp)
@@ -136,15 +133,13 @@ for(i in 1:n_type){
 
 ########## Write out updated hyper parameter values and se to EM_result_file
 # EM_result_file="/BFGWAS_SS/1KG_example/Test_Wkdir/Eoutput/EM_result.txt"
+pve = sum(hypdata[, "r2"])
 print(paste("Sum PIP = ", sum_gamma))
 print(paste("Regression R2 = ", pve))
 print(paste("Posterior log likelihood = ", loglike_total))
 
 hypcurrent = c(pve, loglike_total, hypcurrent)
 hypcurrent <- format(hypcurrent, scientific = TRUE)
-print("write to hypcurrent file with hyper parameter values after MCMC: ")
-print(c(k, hypcurrent))
-
 if(k==0){
 	write.table(matrix(c(k, hypcurrent), nrow=1, dimnames = list(NULL, em_out_names)), file = EM_result_file, sep = "\t", quote = FALSE, row.names = FALSE, col.names = TRUE, append=FALSE)
 }else{

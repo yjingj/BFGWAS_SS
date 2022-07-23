@@ -46,12 +46,6 @@ Zscore <- fread("/home/jyang/GIT/BFGWAS_SS/1KG_example/Test_Wkdir/Zscore/All_reg
 setkey(Zscore, "ID")
 
 ######
-paramdata_bfgwas = LoadEMdata(filename="/home/jyang/GIT/BFGWAS_SS/1KG_example/Test_Wkdir/Eoutput/paramtemp3.txt", header = TRUE)
-#head(paramdata_bfgwas)
-sum(paramdata_bfgwas$Pi)
-OR = read.table(file = "/home/jyang/GIT/BFGWAS_SS/1KG_example/ExData/VCFs/causalSNP_OR.txt", header = TRUE)
-paramdata_bfgwas[OR$rsID, ]
-
 SNP_vec <- paramdata_bfgwas[paramdata_bfgwas$Pi > 0.001, ]$ID
 length(SNP_vec)
 X <- geno_data[SNP_vec, -c(1:5)] %>% t()
@@ -59,12 +53,12 @@ colnames(X) <- SNP_vec
 
 ## OLS R2 with selected variants
 fit = lm(y ~ ., data = data.frame(y=y, X))
-summary(fit)$adj.r.squared # Adjusted R-squared: 0.2443142
+summary(fit)$adj.r.squared # Adjusted R-squared: 0.2395749
 
 ### BFGWAS regression R2
 beta <- paramdata_bfgwas[SNP_vec, ]$Beta
 pred_y <- as.matrix(X) %*% beta
-cor(pred_y[, 1], y)^2 #  0.288847
+cor(pred_y[, 1], y)^2 #  0.2722869
 
 ggplot(paramdata_bfgwas[SNP_vec, ], aes(x = mBeta, y = Beta, col = Pi)) +
 	geom_point() + geom_abline(intercept=0, slope = 1) +
@@ -110,8 +104,6 @@ test_CI_table [test_CI_table$pi == prior_pp, 1:6] <- NA
 # plot causal proportion estimates, requiring library "ggplot2"
 PlotCI_groupPP(hyp_table=test_CI_table, pdfname="/home/jyang/GIT/BFGWAS_SS/1KG_example/AnalyzeResults/test_groupPP.pdf", size = 18, tit = "")
 
-PlotCI_groupESvar(hyp_table=test_CI_table, pdfname="/home/jyang/GIT/BFGWAS_SS/1KG_example/AnalyzeResults/test_groupESvar.pdf", size = 18, tit = "", gwas_n = 2540, scale = FALSE)
-
 ######## Compare hyper estimates to the genome-wide averages
 n_group = 6
 pp_cols = (1:n_group) * 4
@@ -151,12 +143,6 @@ PlotRatio(comp_dat = data.frame(exp(comp_group_pp), funcgroup=group_labels),
 	tit ="Regulatory Annotation", 
 	pdfname = paste(OutDir, "comp_test_pp.pdf", sep =""), 
 	ymode = 1, size = 28, wid = 8) 
-
-
-PlotRatio(comp_dat = data.frame(exp(comp_group_sigma2), funcgroup=group_labels), 
-	tit ="Regulatory Annotation", 
-	pdfname = paste(OutDir, "comp_test_sigma2.pdf", sep =""), 
-	ymode = 0, size = 28, wid = 8) 
 
 ######## END ################
 
