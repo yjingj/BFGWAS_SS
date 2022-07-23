@@ -87,7 +87,7 @@ my $burnin="10000";
 my $Nmcmc="10000";
 my $NmcmcLast="10000";
 my $pp="1e-6";
-my $a_gamma="1.01"; # mode 0.01; mean 1 in the gamma distribution
+my $a_gamma="1.01"; # mode 0.00001; mean 1 in the gamma distribution
 my $b_gamma="1";
 
 #initialize options

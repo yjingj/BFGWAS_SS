@@ -1,4 +1,5 @@
 # rm(list=ls(all=TRUE))
+library(data.table)
 library(tidyverse)
 
 ####### Source Util Functions and set data directories
@@ -32,9 +33,6 @@ ggplot(paramdata_bfgwas, aes(x=POS, y = -log10(Pval), color = Pi)) +
 ggsave("/home/jyang/GIT/BFGWAS_SS/1KG_example/AnalyzeResults/mp_06_2022.pdf")
 
 ## Load Phenotype
-library(data.table)
-library(tidyverse)
-
 pheno = read.table("/home/jyang/GIT/BFGWAS_SS/1KG_example/ExData/phenoAMD_1KG.txt", header = FALSE)
 y = pheno$V2
 y = scale(y)
@@ -51,19 +49,22 @@ setkey(Zscore, "ID")
 paramdata_bfgwas = LoadEMdata(filename="/home/jyang/GIT/BFGWAS_SS/1KG_example/Test_Wkdir/Eoutput/paramtemp3.txt", header = TRUE)
 #head(paramdata_bfgwas)
 sum(paramdata_bfgwas$Pi)
+OR = read.table(file = "/home/jyang/GIT/BFGWAS_SS/1KG_example/ExData/VCFs/causalSNP_OR.txt", header = TRUE)
+paramdata_bfgwas[OR$rsID, ]
 
 SNP_vec <- paramdata_bfgwas[paramdata_bfgwas$Pi > 0.001, ]$ID
 length(SNP_vec)
 X <- geno_data[SNP_vec, -c(1:5)] %>% t()
 colnames(X) <- SNP_vec
 
+## OLS R2 with selected variants
 fit = lm(y ~ ., data = data.frame(y=y, X))
-summary(fit)
-summary(fit)$adj.r.squared # Adjusted R-squared: 0.2536693
+summary(fit)$adj.r.squared # Adjusted R-squared: 0.2443142
 
+### BFGWAS regression R2
 beta <- paramdata_bfgwas[SNP_vec, ]$Beta
 pred_y <- as.matrix(X) %*% beta
-cor(pred_y[, 1], y)^2 #  0.2966076
+cor(pred_y[, 1], y)^2 #  0.288847
 
 ggplot(paramdata_bfgwas[SNP_vec, ], aes(x = mBeta, y = Beta, col = Pi)) +
 	geom_point() + geom_abline(intercept=0, slope = 1) +
