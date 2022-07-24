@@ -1,5 +1,6 @@
 Sys.setlocale('LC_ALL', 'C')
 options(stringsAsFactors=F)
+options(warn=-1)
 # source("/home/jyang/GIT/bfGWAS_SS/bin/R_funcs.r")
 
 ######## Need to pass args(hypfile, paramfile, k, hypcurrent_file) from bash
