@@ -2741,9 +2741,9 @@ double BVSRM::CalcLR_cond_SS(const double &rtr, const size_t pos_j, const vector
 
     if( lrt <= 0) 
     {  
-        //cout << "pos_j = " << pos_j << "; lrt = " << lrt << endl;
+        lrt = 0.0 ;
         //cout << "rtr = " << rtr << "; xtr_j = " << xtr_j  << endl;
-        perror("Nonpositive regression var in CalcLR_cond_SS(), MCMC results may not be reliable !!\n Please double check your input summary statistics!\n");
+        //cout << "pos_j = " << pos_j << "; lrt = " << lrt << endl;
     }
     else{
         lrt = (double)(ni_test) * (log(rtr) - log(lrt) ); // Likelihood Ratio Test Statistic
@@ -3540,15 +3540,14 @@ double BVSRM::CalcPosterior_SS (const gsl_matrix *D, const gsl_vector *mbeta, gs
     gsl_blas_ddot (D_beta_hat, beta_hat, &R2);
    // cout << "Regression R2 in CalcPosterior = " << R2 << endl;
      
-    if (R2 > 1 || R2 < 0.0) {
-        cerr << "Out of range regression R2 in CalcPosterior_SS: " << R2 << endl;
-        cerr << "MCMC results may not be reliable, please double check your input summary statistics!\n";
-        //Error_Flag=1;
+    if (R2 > 1.0 ) {
+        R2 = 1.0;
     }
-    else{
-        Error_Flag=0;
-        cHyp.pve = R2; // Calculate pve, regression r2
+    else if (R2 < 0.0){
+        R2 = 0.0 ;
     }
+    Error_Flag=0;
+    cHyp.pve = R2; // Calculate pve, regression r2
 
     double bSb;
     gsl_blas_ddot (&mbeta_sub.vector, beta_hat, &bSb);
