@@ -3,6 +3,9 @@ options(stringsAsFactors=F)
 options(warn=-1)
 # source("/home/jyang/GIT/bfGWAS_SS/bin/R_funcs.r")
 
+# library(tidyverse)
+library(data.table)
+
 ######## Need to pass args(hypfile, paramfile, k, hypcurrent_file) from bash
 args <- commandArgs(TRUE)
 # print(args)
@@ -63,9 +66,9 @@ logprior_pi <- function(a, b, x){ return( (a - 1) * log(x) + (b - 1) * log(1 - x
 ptm <- proc.time()
 ########### Load hypfile ....
 
-# hypfile="/net/fantasia/home/yjingj/GIT/bfGWAS/1KG_example/Test_Wkdir/hypval.current 
+# hypfile="/mnt/YangFSS/data2/jyang/test_BFGWAS/test_wkdir/Eoutput/hyptemp0.txt"
 
-hypdata = fread(hypfile, sep="\t", header=TURE)
+hypdata = read.table(hypfile, sep="\t", header=FALSE)
 n_type = (dim(hypdata)[2] - 3)/3
 print(paste(" Total Annotation categories : ", n_type))
 temp_col_names <- c("block", "loglike", "r2")
@@ -78,6 +81,7 @@ for(i in 1:n_type){
 colnames(hypdata) <-  temp_col_names
 
 ########### Update hyper parameter values
+# hypcurrent_file="/mnt/YangFSS/data2/jyang/test_BFGWAS/test_wkdir/hypval.current"
 prehyp <- fread(hypcurrent_file, header=TRUE)
 print("hyper parameter values before MCMC: ")
 print(prehyp)
@@ -111,7 +115,7 @@ for(i in 1:n_type){
 colnames(hypmat) <- c("pi", "tau")
 print("hyper parameter values updates after MCMC: ")
 print(hypmat)
-write.table(format(hypmat, scientific=TRUE), 
+write.table(format(data.frame(hypmat), scientific=TRUE, digits = 3),
 	file=hypcurrent_file, 
 	quote = FALSE, sep = "\t", row.names=FALSE, col.names=TRUE)
 
@@ -126,7 +130,7 @@ loglike_total = sum(hypdata$loglike, na.rm = TRUE)
 }
 
 ########## Write out updated hyper parameter values and se to EM_result_file
-# EM_result_file="/BFGWAS_SS/1KG_example/Test_Wkdir/Eoutput/EM_result.txt"
+# EM_result_file="/mnt/YangFSS/data2/jyang/test_BFGWAS/test_wkdir/Eoutput/EM_result.txt"
 pve = sum(hypdata[, "r2"], na.rm = TRUE)
 print(paste("Sum PIP = ", sum_gamma))
 print(paste("Regression R2 = ", pve))
