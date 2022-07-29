@@ -2537,11 +2537,11 @@ bool BVSRM::ColinearTest_SS(const gsl_matrix *D_temp, const gsl_vector * Xtx_tem
         EigenSolve(D_temp, Xtx_temp, beta_temp);
     gsl_blas_ddot(Xtx_temp, beta_temp, &R2);
     if(R2 < 0.0 || R2 > 1.0) {
-        cout << "ColinearTest_SS: Conditional R2 = " << R2 << endl;
-        perror("Conditional R2 either negative or greater than 1." );
+       // cout << "ColinearTest_SS: Conditional R2 = " << R2 << endl;
+       // perror("Conditional R2 either negative or greater than 1." );
     }
     //
-    if ( (R2 >= 0.95) || (R2 < 0.0) ) {
+    if ( R2 >= 0.95) {
         colinear = 1;
         // cout << "R2 in ColinearTest = " << R2 << endl;
     }
@@ -2739,7 +2739,7 @@ double BVSRM::CalcLR_cond_SS(const double &rtr, const size_t pos_j, const vector
 
     if( lrt <= 0) 
     {  
-        lrt = 0.0 ;
+        lrt = 0.000001 ;
         //cout << "rtr = " << rtr << "; xtr_j = " << xtr_j  << endl;
         //cout << "pos_j = " << pos_j << "; lrt = " << lrt << endl;
     }
@@ -3567,9 +3567,7 @@ double BVSRM::ProposeGamma_SS (const vector<size_t> &rank_old, vector<size_t> &r
     map<size_t, int> mapRank2in;
     double unif, logp = 0.0;
     size_t r_add, r_remove, col_id, r;
-    
     if (cHyp_old.n_gamma!=rank_old.size()) {cout<<"rank_old size wrong"<<endl;}
-
     rank_new.clear();
     if (rank_old.size() > 0) {
         for (size_t i=0; i<rank_old.size(); ++i) {
@@ -3598,22 +3596,18 @@ double BVSRM::ProposeGamma_SS (const vector<size_t> &rank_old, vector<size_t> &r
 
         if(flag_gamma==1)  {//add a snp;
             //cout << "adding a snp ... \n" ;
-            do {
+            do{
                 r_add=gsl_ran_discrete (gsl_r, gsl_t);
-            } while ((mapRank2in.count(r_add)!=0));
-            
+            }while ((mapRank2in.count(r_add)!=0));
             double prob_total=1.0;
-
             for (size_t ii=0; ii<cHyp_new.n_gamma; ++ii) {
                 r=rank_new[ii];
                 prob_total-=p_gamma[r];
             }
-            
             mapRank2in[r_add]=1;
             rank_new.push_back(r_add);
             cHyp_new.n_gamma++;
             logp += -log(p_gamma[r_add]/prob_total)-log((double)cHyp_new.n_gamma);
-            
             if (rank_old.size()>0) {
                 SetSSgammaAdd(LD, mbeta, D_old, mbeta_old, rank_old, r_add, D_new, mbeta_new);
             }
@@ -3623,22 +3617,18 @@ double BVSRM::ProposeGamma_SS (const vector<size_t> &rank_old, vector<size_t> &r
         }
         else if (flag_gamma==2) {//delete a snp;
             //cout << "delete a snp" << endl;
-            
             col_id=gsl_rng_uniform_int(gsl_r, cHyp_new.n_gamma);
             r_remove=rank_new[col_id];
-            
             double prob_total=1.0;
             for (size_t ii=0; ii<cHyp_new.n_gamma; ++ii) {
                 r=rank_new[ii];
                 prob_total-=p_gamma[r];
             }
             prob_total+=p_gamma[r_remove];
-            
             mapRank2in.erase(r_remove);
             rank_new.erase(rank_new.begin()+col_id);
             logp+=log(p_gamma[r_remove]/prob_total)+log((double)cHyp_new.n_gamma);
             cHyp_new.n_gamma--;
-            
             if (rank_new.size() > 0) {
                 SetSSgammaDel(D_old, mbeta_old, rank_old, col_id, D_new, mbeta_new);
             }
@@ -3677,14 +3667,12 @@ double BVSRM::ProposeGamma_SS (const vector<size_t> &rank_old, vector<size_t> &r
 
                 j_add = gsl_ran_discrete(gsl_r, gsl_s);
                 pos_add = (pos_remove - win) + j_add;
-                if((pos_add < 0) || (pos_add >= (long int)ns_test) || (pos_add == pos_remove)){
-                    //cout << "j_add = " << j_add << "; pos_add = " << pos_add << endl;
-                    perror("ERROR proposing switch snp\n"); //new snp != removed snp
+                while((pos_add < 0) || (pos_add >= (long int)ns_test) || (pos_add == pos_remove)){
+                    cout << "j_add = " << j_add << "; pos_add = " << pos_add << endl;
+                    j_add = gsl_ran_discrete(gsl_r, gsl_s);
+                    pos_add = (pos_remove - win) + j_add;
                 }
-
                 r_add = mapPos2Rank[pos_add];
-                //cout << "D_cond : \n"; PrintMatrix(D_cond, s_size, s_size);
-
                 gsl_a = MakeProposalSS(LD, mbeta, pos_add, p_cond_add, mapRank2in, beta_cond, rtr, rank_new);
 
                 double prob_total_remove=1.0;
@@ -3717,13 +3705,13 @@ double BVSRM::ProposeGamma_SS (const vector<size_t> &rank_old, vector<size_t> &r
             }
             else {
                 gsl_s = MakeProposalSS(pos_remove, p_cond_remove, mapRank2in);
-
                 j_add = gsl_ran_discrete(gsl_r, gsl_s);
                 pos_add = (pos_remove - win) + j_add;
-                if((pos_add < 0) || (pos_add >= (long int)ns_test) || (pos_add == (long int)pos_remove))
-                    perror("ERROR proposing switch snp\n"); //new snp != removed snp
+                while((pos_add < 0) || (pos_add >= (long int)ns_test) || (pos_add == (long int)pos_remove)){
+                    j_add = gsl_ran_discrete(gsl_r, gsl_s);
+                    pos_add = (pos_remove - win) + j_add;
+                }
                 r_add = mapPos2Rank[pos_add];
-                
                 //construct gsl_s, JY
                 //cout << "o_add = " << pos_add <<  "; r_add = "<<r_add << endl;
                 gsl_a = MakeProposalSS(pos_add, p_cond_add, mapRank2in);
