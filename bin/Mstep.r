@@ -57,7 +57,7 @@ CI_fish_tau <- function(beta2, gamma, a, b, gwas_n){
 
 ## log prior functions
 logprior_tau <- function(a, b, x){ return((a - 1) * log(x) - b * x) }
-logprior_pi <- function(a, b, x){ return((a-1) * log(x) + (b-1) * log(1 - x)) }
+logprior_pi <- function(a, b, x){ return( (a - 1) * log(x) + (b - 1) * log(1 - x)) }
 
 
 ptm <- proc.time()
@@ -102,7 +102,8 @@ for(i in 1:n_type){
 	sum_gamma_temp = hypdata[, paste("sum_gamma", (i-1), sep="_")]
 	sum_gamma = sum_gamma + sum(sum_gamma_temp)
 	pi_temp = CI_fish_pi(sum_gamma_temp, m_vec[i], a_beta, b_beta)
-	tau_temp = CI_fish_tau(hypdata[, paste("sum_Ebeta2", (i-1), sep="_")], sum_gamma_temp,  a_gamma, b_gamma, gwas_n)
+	tau_temp = c(1, 0)
+	#CI_fish_tau(hypdata[, paste("sum_Ebeta2", (i-1), sep="_")], sum_gamma_temp,  a_gamma, b_gamma, gwas_n)
 	hypcurrent <- c(hypcurrent, pi_temp, tau_temp)
 	# print(cbind(pi_temp, tau_temp))
 	hypmat <- rbind(hypmat, c(pi_temp[1], tau_temp[1]))

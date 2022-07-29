@@ -1270,6 +1270,7 @@ void BVSRM::getSubVec(gsl_vector *sigma_subvec, const vector<size_t> &rank, cons
     }
 }
 
+//set sigma_subvec and mgamma vectoer and trace vector Gvec
 //Used for EM-Block
 void BVSRM::get_InvSigmaVec(gsl_vector *inv_sigma_subvec, const vector<size_t> &rank, const vector<SNPPOS> &snp_pos)
 {
@@ -1285,10 +1286,7 @@ void BVSRM::get_InvSigmaVec(gsl_vector *inv_sigma_subvec, const vector<size_t> &
     }
 }
 
-
-//set sigma_subvec and mgamma vectoer and trace vector Gvec
-
-//used in EM-block
+// set mfunc
 void BVSRM::set_mgamma(class HYPBSLMM &cHyp, const vector<size_t> &rank, const vector<SNPPOS> &snp_pos)
 {
     size_t order_i;
@@ -3008,7 +3006,6 @@ void BVSRM::MCMC_SS (const vector< vector<double> > &LD, const vector<double> &m
             logMHratio = ProposeGamma_SS (rank_old, rank_new, cHyp_old, cHyp_new, repeat, LD, mbeta, D_old, mbeta_old, D_new, mbeta_new); //JY
            // cout << "After ProposeGamma_SS : propose gamma logMHratio = "<<logMHratio << "; MHratio = " << exp(logMHratio) << endl ;
             time_Proposal += (clock()-time_start)/(double(CLOCKS_PER_SEC)*60.0);
-
            // cout << "propose new rank: "; PrintVector(rank_new);
            // cout <<"D_new: "; PrintMatrix(D_new, rank_new.size(), rank_new.size());
            // cout <<"mbeta_new: "; PrintVector(mbeta_new, rank_new.size());
@@ -3036,9 +3033,8 @@ void BVSRM::MCMC_SS (const vector< vector<double> > &LD, const vector<double> &m
                 }
                 else{
                     cHyp_new.m_gamma.assign(n_type, 0);
-                    loglikegamma = CalcLikegamma(cHyp_new);
-                    //cout << "loglikegamma = " << loglikegamma << " in the Null model \n"; 
-                    logPost_new = loglikegamma;
+                    logPost_new = CalcLikegamma(cHyp_new);
+                    //cout << "logPost = " << logPost_new << " in the Null model \n";
                     cHyp_new.pve=0.0;
                     //cout << "Logpos of the null model is " << logPost_new << endl;
                 }
@@ -3071,15 +3067,15 @@ void BVSRM::MCMC_SS (const vector< vector<double> > &LD, const vector<double> &m
 	                for (size_t i=0; i<rank_new.size(); i++) {
 	                	rank_old.push_back(rank_new[i]); // copy rank_new to rank_old
                 	}
-                if (rank_old.size() != rank_new.size()) {
-                    cerr << "Error: rank_old size != rank_new size\n";
-                    exit(-1);
-                }
-                //cout << "Accept proposal: " << endl;
+                    if (rank_old.size() != rank_new.size()) {
+                        cerr << "Error: rank_old size != rank_new size\n";
+                        exit(-1);
+                    }
+                    //cout << "Accept proposal with logPost =  " << logPost_old << endl;
                 
                 if(rank_old.size()>0){
-                    gsl_vector_view sigma_oldsub=gsl_vector_subvector(sigma_subvec_old, 0, rank_old.size());
-                    gsl_vector_view sigma_newsub=gsl_vector_subvector(sigma_subvec_new, 0, rank_old.size());
+                    gsl_vector_view sigma_oldsub=gsl_vector_subvector(sigma_subvec_old, 0, rank_new.size());
+                    gsl_vector_view sigma_newsub=gsl_vector_subvector(sigma_subvec_new, 0, rank_new.size());
                     gsl_vector_memcpy(&sigma_oldsub.vector, &sigma_newsub.vector);
                 
                     gsl_matrix_view Dold_sub=gsl_matrix_submatrix(D_old, 0, 0, rank_new.size(), rank_new.size());
@@ -3104,8 +3100,9 @@ void BVSRM::MCMC_SS (const vector< vector<double> > &LD, const vector<double> &m
              cout << "acceptance percentage = " << setprecision(6) << accept_percent << endl ;
              cout << "\n MCMC iteration after burn-ins = " << t - w_step << endl;
              cout << "From last mcmc: cHyp_old.n_gamma = " << cHyp_old.n_gamma << endl;
-             cout << "From last mcmc: # of selected variants per category = " << endl; PrintVector(cHyp_old.m_gamma);
-             //cout << "beta_hat: "; PrintVector(beta_old, rank_old.size()); cout << endl;
+             cout << "From last mcmc: # of selected variants per category = " << endl;
+             PrintVector(cHyp_old.m_gamma);
+             cout << "beta_hat: "; PrintVector(beta_old, rank_old.size()); cout << endl;
              cout << "From last mcmc: posterior loglike = " << logPost_old << endl;
         }
         
@@ -3508,6 +3505,7 @@ double BVSRM::CalcPosterior_SS (const gsl_matrix *D, const gsl_vector *mbeta, gs
         gsl_vector_set(sigma_subvec_inv, i, 1/gsl_vector_get(sigma_vec, i));
         logdet_V = logdet_V + log(gsl_vector_get(sigma_vec, i));
     }
+    //cout << "logdet_V = " << logdet_V << endl;
     
     gsl_matrix_const_view D_sub=gsl_matrix_const_submatrix (D, 0, 0, s_size, s_size);
     gsl_vector_const_view mbeta_sub=gsl_vector_const_subvector (mbeta, 0, s_size);
@@ -3521,6 +3519,11 @@ double BVSRM::CalcPosterior_SS (const gsl_matrix *D, const gsl_vector *mbeta, gs
     gsl_vector_add(&Omega_diag.vector, sigma_subvec_inv);
     //cout << "Omega : "; PrintMatrix(Omega, s_size, s_size);
 
+    // calculate logdet(Omega)
+    double logdet_O = 0.0;
+    logdet_O=LapackLogDet(Omega);
+    //cout << "logdet_O = " << logdet_O << endl;
+
     // posterior estimates of beta
     if(LapackSolve(Omega, &mbeta_sub.vector, beta_hat)!=0)
        EigenSolve(Omega, &mbeta_sub.vector, beta_hat);
@@ -3528,18 +3531,12 @@ double BVSRM::CalcPosterior_SS (const gsl_matrix *D, const gsl_vector *mbeta, gs
     gsl_vector_view beta_sub=gsl_vector_subvector(beta, 0, s_size);
     gsl_vector_memcpy(&beta_sub.vector, beta_hat);
 
-    // calculate logdet(Omega)
-    double logdet_O = 0.0;
-    logdet_O=LapackLogDet(Omega);
-   // cout << "logdet_O = " << logdet_O << endl;
-
     // Start here 06/04/2022
     gsl_vector *D_beta_hat = gsl_vector_alloc (s_size);
     gsl_blas_dgemv(CblasNoTrans, 1, &D_sub.matrix, beta_hat, 0, D_beta_hat);
     double R2;
     gsl_blas_ddot (D_beta_hat, beta_hat, &R2);
    // cout << "Regression R2 in CalcPosterior = " << R2 << endl;
-     
     if (R2 > 1.0 ) {
         R2 = 1.0;
     }
@@ -3551,9 +3548,9 @@ double BVSRM::CalcPosterior_SS (const gsl_matrix *D, const gsl_vector *mbeta, gs
 
     double bSb;
     gsl_blas_ddot (&mbeta_sub.vector, beta_hat, &bSb);
-    loglike = ni_test * bSb ;
+    loglike = (double)ni_test * bSb ;
     loglike = -0.5 * (logdet_O + logdet_V - loglike); // log posterior likelihood
-   // cout << "Posterior Loglike  = " << loglike << endl;
+    //cout << "Posterior Loglike  = " << loglike << endl;
 
     gsl_matrix_free (Omega);
     gsl_vector_free (beta_hat);
