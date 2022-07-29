@@ -84,25 +84,77 @@ make
 * **Genome Block Prefix File** of VCF genotype files as in `./1KG_example/ExData/fileheads_4region.txt` is required. Each row of the list file is the file head of the VCF file of one genome block as in `[filehead].vcf.gz`. Note that the VCF file extension suffix `.vcf.gz` should not be included.
 
 #### 2. Prior Parameter File
+Two prior parameters need to have initial values given in the hyper parameter file, e.g., `./1KG_example/ExData/InitValues6.txt`. 
+
+- First row of header starts with a `#` sign and each row represents the prior causal probability `pi` and a scale parameter for effect size variance `tau_beta` per annotation.
+- Default initial `pi` is recomend to set as `1e-7` for analyzing ~10M SNPs, or `1e-6` for analyzing ~1M SNPs, which will be updated in the M-step.
+- Default `tau_beta` is recomend to set as `1`, which will not be updated in the M-step. The magnitude of Bayesian effect size estimates are recomended to be set at about the same magnitude as marginal effect sizes. A larger `tau` value will shrink Bayesian effect size estimates more towards `0`.
+
+| #pi    | tau_beta   | 
+| ----------|:-------------:| 
+| 1e-7    | 1 | 
+| 1e-7    | 1 |  
+|...	| ... |  
+
 
 #### 3. Annotation Code File
+The annotation code file provides information about how we want to group unique annotation symbols. The first row will provide the total number of annotation categories we will consider, e.g., `./1KG_example/ExData/AnnoCode6.txt`. Annotation code will start from `0`, and increment by `1` up to `n_type -1`.
+
+| #n_type    | 6   | 
+| ----------|:-------------:| 
+| CODING   | 0 | 
+| UTR   | 1 |  
+| PROMOTOR  | 2 |  
+|...	| ... |  
 
 #### 4. Annotation File
+The annotation files are corresponding to genome-blocks, and should be gzipped and named as `Anno_${filehead}.txt.gz`. See example files under `./1KG_example/ExData/Annotations/`.
+
+- There are 5 columns in the annotation file, `#CHROM POS ID REF ALT ANNO`.
+- Annotation symbols are stored one per SNP (per row) in the sixth column. Each annotation symbols should have a code value specified in the **annotation code file**.
+- Missing annotations can be leave as blank.
 
 
 ## Example Usage (`./test_script.sh`)
 
 #### Step 1. Obtain Summary Statistics
+- **Phenotype file** is required even if one only need to generate LD correlation files, e.g., `./1KG_example/ExData/phenoAMD_1KG.txt`. 
+	- Only samples appear in the phenotype file will be used to generate summary statistics.
+	- A fake phenotype file with sample IDs in the first column and all `0` values in the second column can be used to generate LD correlation files.
+- **VCF genotype files** are required for generating summary statistics, e.g., `./1KG_example/ExData/VCFs/`.
+- **LD correlation file** are generated and stored per genome block, e.g., `./1KG_example/Test_Wkdir/LDcorr/`. Upper triangular of the genotype correlation matrix among all nearby SNPs in the specified window are saved in the `9th` column of `CORR`. LD correlation files has to be generated using the `./bin/Estep_mcmc` tool. 
+- **GWAS summary data** can be used, which should also be segmented into one file per genome block, e.g., `./1KG_example/Test_Wkdir/Zscore/`.
+	- Zscore statistic files are of the following format, and the first `7` columns are required in the following order:
+
+| #CHROM | POS   | ID | REF| ALT | N|MAF|Z_SCORE| 
+| ----------|:-------------:|:-------------:| :-------------:| :-------------:| :-------------:| :-------------:| :-------------:| :-------------:| 
+| 19 | 5811718	| rs202128143| TTTG| T| 2504 | 1.438e-01 | -3.170e+00 | -6.335e-02|
+| ...	| ... |   ... |   ... |   ... |   ... |   ... |  
+
 
 #### Step 2. Generate Make File
+- A **Makefile** is generated to wrap all jobs of running `E-step` per genome blocks with provided hyper parameter values, and then run `M-step` with Bayesian CPP and effect size estiamtes across all genome blocks.
+
 
 #### Step 3. Run Make File
+- User will only need to submit a job to run the  **Makefile** and specify the number of jobs to be run in parallel.
 
 
 ## Output Files
+- Bayesian estimates of CPP and genetic effect sizes by last EM iteration are stored in the `${wkdir}/Eoutput/paramtemp${em}.txt` file.
+	- Column `Pi` denotes the Bayesian estimates of CPP
+	- Column `Beta` denotes the Bayesian estimates of genetic effect sizes
+	- Column `mBeta` denotes the marginal genetic effect sizes by single variant analysis
+	- Column `Pval_svt` denotes the p-value by single variant analysis
 
-
-## Analyze Results 
-- `/1KG_example/AnalyzeResults/Analysis.r`
+- `${wkdir}/Eoutput/EM_result.txt`contains regression `r2` estimate and hyper parameter estimates per EM iteration
+	- Regression `r2` might fall out of the range of `[0,1]`, when GWAS summary data were used. 
+- `${wkdir}/Eoutput/hyptemp*.txt` files contain data need to be used in the `M-step`
+## Analyze Results (`/1KG_example/AnalyzeResults/Analysis.r`)
+- Load GWAS results
+- The sum of Bayesian CPP estimates across all SNPs represents the expected number of causal SNPs, which might be considered as a metric to decide initial hyper parameter values.
+- Plot Bayesian effect size estimates vs. marginal effect size estimates
+- Make manhantton plot
+- Plot CPP estimates per annotation group
 
 ## Flags

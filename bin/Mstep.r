@@ -65,10 +65,9 @@ ptm <- proc.time()
 
 # hypfile="/net/fantasia/home/yjingj/GIT/bfGWAS/1KG_example/Test_Wkdir/hypval.current 
 
-hypdata = read.table(hypfile, sep="\t", header=FALSE)
+hypdata = fread(hypfile, sep="\t", header=TURE)
 n_type = (dim(hypdata)[2] - 3)/3
 print(paste(" Total Annotation categories : ", n_type))
-
 temp_col_names <- c("block", "loglike", "r2")
 em_out_names <- c("EM_iteration", "r2", "loglike")
 for(i in 1:n_type){
@@ -76,11 +75,10 @@ for(i in 1:n_type){
 			paste(c("m", "sum_gamma", "sum_Ebeta2"), (i-1), sep = "_"))
 	em_out_names <- c(em_out_names, paste(c("pi_est", "pi_se", "tau_est", "tau_se"), (i-1), sep = "_"))
 }
-
 colnames(hypdata) <-  temp_col_names
 
 ########### Update hyper parameter values
-prehyp <- read.table(hypcurrent_file, header=TRUE)
+prehyp <- fread(hypcurrent_file, header=TRUE)
 print("hyper parameter values before MCMC: ")
 print(prehyp)
 
@@ -98,11 +96,11 @@ for(i in 1:n_type){
 	# print(i)
 	if(m_vec[i] > 0){
 		a_beta = m_vec[i] * pp; b_beta = m_vec[i] - a_beta;
-		}else{a_beta=1; b_beta = 1e6 - 1;}
+		}else{a_beta=1; b_beta = (1/pp) - 1;}
 	sum_gamma_temp = hypdata[, paste("sum_gamma", (i-1), sep="_")]
 	sum_gamma = sum_gamma + sum(sum_gamma_temp)
 	pi_temp = CI_fish_pi(sum_gamma_temp, m_vec[i], a_beta, b_beta)
-	tau_temp = c(1, 0)
+	tau_temp = c(prehyp[i, 2], 0) # do not update tau_beta
 	#CI_fish_tau(hypdata[, paste("sum_Ebeta2", (i-1), sep="_")], sum_gamma_temp,  a_gamma, b_gamma, gwas_n)
 	hypcurrent <- c(hypcurrent, pi_temp, tau_temp)
 	# print(cbind(pi_temp, tau_temp))
@@ -118,24 +116,18 @@ write.table(format(hypmat, scientific=TRUE),
 	quote = FALSE, sep = "\t", row.names=FALSE, col.names=TRUE)
 
 #### Summarize log-likelihood
-loglike_total = sum(hypdata$loglike)
-for(i in 1:n_type){
-	if(sum(prehyp[i, ]>0)==2){
+loglike_total = sum(hypdata$loglike, na.rm = TRUE)
+	for(i in 1:n_type){
 		if(m_vec[i] > 0){
 			a_beta = m_vec[i] * pp; b_beta = m_vec[i] - a_beta;
-		}else{a_beta=1; b_beta = 1e6 - 1;}
-
-		loglike_total = loglike_total + 
-				logprior_pi(a_beta, b_beta, prehyp[i, 1]) +
-    			logprior_tau(a_gamma, b_gamma, prehyp[i, 2])
-    }else{
-    	print("pre-hyper-parameter <= 0... ")
-    }
+		}else{a_beta=1; b_beta = (1/pp) - 1;}
+		loglike_total = loglike_total +
+				logprior_pi(a_beta, b_beta, prehyp[i, 1])
 }
 
 ########## Write out updated hyper parameter values and se to EM_result_file
 # EM_result_file="/BFGWAS_SS/1KG_example/Test_Wkdir/Eoutput/EM_result.txt"
-pve = sum(hypdata[, "r2"])
+pve = sum(hypdata[, "r2"], na.rm = TRUE)
 print(paste("Sum PIP = ", sum_gamma))
 print(paste("Regression R2 = ", pve))
 print(paste("Posterior log likelihood = ", loglike_total))

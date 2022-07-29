@@ -916,10 +916,10 @@ void BFGWAS::WriteLog (int argc, char ** argv, PARAM &cPar)
 	
 	outfile<<"##"<<endl;
 	outfile<<"## Sample Sizes and Test SNP Numbers :"<<endl;
-	outfile<<"## number_of_total_individuals = "<<cPar.ni_total<<endl;	
-	outfile<<"## number_of_analyzed_individuals = "<<cPar.ni_test<<endl;
-	outfile<<"## number_of_total_SNPs = "<<cPar.ns_total<<endl;	
-	outfile<<"## number_of_analyzed_SNPs = "<<cPar.ns_test<<endl;
+	// outfile<<"## number_of_total_individuals = "<<cPar.ni_total<<endl;
+	outfile<<"## Sample size = "<<cPar.ni_test<<endl;
+	outfile<<"## Number_of_total_SNPs = "<<cPar.ns_total<<endl;
+	outfile<<"## Number_of_analyzed_SNPs = "<<cPar.ns_test<<endl;
 	
 	if (cPar.a_mode==11) {
 		outfile<<"##"<<endl;
@@ -928,7 +928,7 @@ void BFGWAS::WriteLog (int argc, char ** argv, PARAM &cPar)
 		//outfile<<"## initial value of rho = "<<cPar.cHyp_initial.rho<<endl;
 		//outfile<<"## initial value of pi = "<<exp(cPar.cHyp_initial.logp)<<endl;
 		outfile<<"## initial value of |gamma| = "<<cPar.cHyp_initial.n_gamma<<endl;
-		outfile<<"## random seed = "<<cPar.randseed<<endl;
+		// outfile<<"## random seed = "<<cPar.randseed<<endl;
 		outfile<<"## acceptance ratio = "<<(double)cPar.n_accept/(double)((cPar.w_step+cPar.s_step)*cPar.n_mh)<<endl;
 
 		outfile<< "## Region_PIP = " << cPar.region_pip <<endl;
@@ -939,19 +939,17 @@ void BFGWAS::WriteLog (int argc, char ** argv, PARAM &cPar)
 	}
 	
 	outfile<<"##"<<endl;
-	outfile<<"## Computation Time:"<<endl;
-	outfile<<"## total computation time = "<<cPar.time_total<<" min "<<endl;
-	outfile<<"## computation time break down: "<<endl;
-
-
+	//outfile<<"## Computation Time:"<<endl;
+	outfile<<"## Total computation time = "<<cPar.time_total<<" min "<<endl;
+	// outfile<<"## computation time break down: "<<endl;
 	if (cPar.a_mode==11) {
-		outfile<<"##      time on MCMC = "<<cPar.time_opt<<" min "<<endl;
-		outfile<<"##      time on Proposal = "<<cPar.time_Proposal<<" min "<<endl;
-		outfile<<"##      time on Posterior = "<<cPar.time_Omega<<" min "<<endl;
+		//outfile<<"##      time on MCMC = "<<cPar.time_opt<<" min "<<endl;
+		//outfile<<"##      time on Proposal = "<<cPar.time_Proposal<<" min "<<endl;
+		//outfile<<"##      time on Posterior = "<<cPar.time_Omega<<" min "<<endl;
         
-        outfile << "Accept #add=" << cPar.nadd_accept<< ", total add step = " << cPar.nadd<<endl;
-        outfile << "Accept #delete=" << cPar.ndel_accept<< ", total delete step = " << cPar.ndel<<endl;
-        outfile << "Accept #switch=" << cPar.nswitch_accept<< ", total switch step = " << cPar.nswitch<<endl;
+        outfile << "## Accept #add=" << cPar.nadd_accept<< ", total add step = " << cPar.nadd<<endl;
+        outfile << "## Accept #delete=" << cPar.ndel_accept<< ", total delete step = " << cPar.ndel<<endl;
+        outfile << "## Accept #switch=" << cPar.nswitch_accept<< ", total switch step = " << cPar.nswitch<<endl;
         //outfile << "Accept #other=" << cPar.nother_accept<< ", total other step = " << cPar.nother<<endl;
 	}
 

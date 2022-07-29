@@ -2,7 +2,7 @@
 library(data.table)
 library(tidyverse)
 
-####### Source Util Functions and set data directories
+####### Source Util Functions and set data directories ########
 source("/home/jyang/GIT/BFGWAS_SS/bin/R_funcs.r")
 
 DataDir = "/home/jyang/GIT/BFGWAS_SS/1KG_example/ExData/" # example data directory
@@ -11,7 +11,7 @@ ResultDir = "/home/jyang/GIT/BFGWAS_SS/1KG_example/Test_Wkdir" # result director
 
 setwd("/home/jyang/GIT/BFGWAS_SS/1KG_example/AnalyzeResults/")
 
-######## Compare results
+######## Compare results ########
 paramdata_bfgwas = LoadEMdata(filename="/home/jyang/GIT/BFGWAS_SS/1KG_example/Test_Wkdir/Eoutput/paramtemp3.txt", header = TRUE)
 #head(paramdata_bfgwas)
 sum(paramdata_bfgwas$Pi)
@@ -20,7 +20,7 @@ sum(paramdata_bfgwas$Pi)
 OR = read.table(file = "/home/jyang/GIT/BFGWAS_SS/1KG_example/ExData/VCFs/causalSNP_OR.txt", header = TRUE)
 paramdata_bfgwas[OR$rsID, ]
 
-## Manhantton plot
+## Manhantton plot with ~10K SNPs ########
 paramdata_bfgwas_sig <- filter(paramdata_bfgwas, Pi > 0.1)
 dim(paramdata_bfgwas_sig )
 paramdata_bfgwas_sig
@@ -32,13 +32,30 @@ ggplot(paramdata_bfgwas, aes(x=POS, y = -log10(Pval), color = Pi)) +
 	geom_hline(yintercept=-log10(5e-8))
 ggsave("/home/jyang/GIT/BFGWAS_SS/1KG_example/AnalyzeResults/mp_06_2022.pdf")
 
-## Load Phenotype
+########  Manhantton plot for millions SNPs ########
+sig_level="5e-8"
+paramFile="/home/jyang/GIT/BFGWAS_SS/1KG_example/Test_Wkdir/Eoutput/paramtemp3.txt"
+log_file="/home/jyang/GIT/BFGWAS_SS/1KG_example/AnalyzeResults/sim_mp.log.txt"
+out_prefix="/home/jyang/GIT/BFGWAS_SS/1KG_example/AnalyzeResults/sim"
+
+system(paste(
+"R CMD BATCH --no-save --no-restore ",
+"'--args",
+" paramFile=\"",paramFile,"\"",
+" sig_level=\"", sig_level,"\"",
+" out_prefix=\"", out_prefix,"\"",
+"' ",
+" /home/jyang/GIT/BFGWAS_SS/bin/mp_plot.r ",
+log_file, sep=""), wait=FALSE)
+
+
+## Load Phenotype ########
 pheno = read.table("/home/jyang/GIT/BFGWAS_SS/1KG_example/ExData/phenoAMD_1KG.txt", header = FALSE)
 y = pheno$V2
 y = scale(y)
 names(y) = pheno$V1
 
-### Read all genotype Data
+### Read all genotype Data ########
 geno_data <- fread("/home/jyang/GIT/BFGWAS_SS/1KG_example/ExData/Genotypes/All_4REGION_1KG.geno.gz", sep = "\t", header = TRUE)
 setkey(geno_data, "ID")
 
@@ -77,7 +94,7 @@ summary(lm(y ~ t(X)))$adj.r.squared # Adjusted R-squared:  0.1966276
 X <- geno_data[SNP_vec, -c(1:5)] %>% as.matrix()
 beta <- paramdata_bfgwas[SNP_vec, ]$Beta
 pred_y <- t(X) %*% beta
-cor(pred_y[, 1], y)^2 #  0.07832969
+cor(pred_y[, 1], y)^2 #  0.1146011
 
 ################################################
 ###### REMARK: you might want to check if the estimated variants with high association probability are in high LD with the true causal ones
@@ -96,6 +113,7 @@ group_labels <- as.factor(c("Coding", "UTR", "Promoter", "DHS", "Intronic", "Int
 
 test_CI_table <- CItable(test_hyp[nrow(test_hyp), ], n_type = 6, alpha = 0.95,
 		funcgroup = group_labels)
+test_CI_table
 
 # Set the values of these categories without associations at NAs, change prior_pp value accordingly
 prior_pp = 1e-6
