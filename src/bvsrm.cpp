@@ -310,7 +310,7 @@ void BVSRM::WriteParam_SS(vector<pair<double, double> > &beta_g, const vector<SN
         }
     }
     size_t r_size = rank_vec.size();
-    cout << "WriteParam_SS: Selected # SNPs with PIP > 0.001 : " << r_size << endl;
+    cout << "WriteParam_SS: Number of SNPs with CPP > 0.001 : " << r_size << endl;
 
     size_t pos_i, pos_j;
     double xtx_ij;
@@ -2199,7 +2199,7 @@ void BVSRM::MCMC (gsl_matrix *X, const gsl_vector *y, bool original_method) {
     
     cout<< "MCMC completed ... " << endl << endl;
     region_pip = region_pip / double(s_step);
-    cout << "region_pip = " << setprecision(5) << region_pip << endl;
+    cout << "region_cpp = " << setprecision(5) << region_pip << endl;
 
     accept_percent = (double)n_accept/(double)(total_step * n_mh);
     cout << "gamma acceptance percentage = " << accept_percent << endl ;
@@ -3133,14 +3133,14 @@ void BVSRM::MCMC_SS (const vector< vector<double> > &LD, const vector<double> &m
     cout<< "MCMC completed ... " << endl << endl;
     // cout << "Total Accepted mcmc steps = " << region_pip << "; s_step = " << s_step << endl;
     region_pip = region_pip / (double)s_step;
-    cout << "region_pip = " << setprecision(5) << region_pip << endl;
+    cout << "region_cpp = " << setprecision(5) << region_pip << endl;
 
     accept_percent = (double)n_accept/(double)(total_step * n_mh);
     cout << "Gamma Proposal Acceptance Percentage = " << accept_percent << endl ;
     //cout << "Last iteration: # of selected variants per category: "; PrintVector(cHyp_old.m_gamma);
     //cout << "Last iteration beta_hat: "; PrintVector(beta_old, rank_old.size());
     //cout << "Last iteration Posterior loglike: " << logPost_old << endl;
-    cout << "Accepted proposals: k_save_sample = " << k_save_sample << endl;
+    cout << "Accepted proposals: " << k_save_sample << endl;
     // cout << "Write snps_mcmc ... \n";
     // cout << "snps_mcmc length: " << snps_mcmc.size() << endl;
     // WriteMCMC(snps_mcmc); // save all active SNPs from MCMC

@@ -2464,6 +2464,9 @@ bool ReadFile_score(const string &file_score, vector<SNPPOS> &snp_pos, map<strin
                 if(mapLDKey2Pos.count(key) == 0){
                     ns_total++;
                     continue;
+                }else{
+                    z_i = -z_i;
+                    beta_i = -beta_i;
                 }
             }
 
