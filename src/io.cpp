@@ -2307,7 +2307,7 @@ bool ReadFile_score(const string &file_score, vector<SNPPOS> &snp_pos, map<strin
 {
     string line;
     char *pch, *nch;
-    string rs, chr, minor, major, key;
+    string rs, chr, minor, major, key, tmp_major;
     double maf_i, p_score, z_i, beta_i, chisq_i;
     long int b_pos=0;
     // dummy variable for SNPINFO
@@ -2460,13 +2460,16 @@ bool ReadFile_score(const string &file_score, vector<SNPPOS> &snp_pos, map<strin
 
             // Exclude SNP if not present in LD file
             if(mapLDKey2Pos.count(key) == 0){
-                SwapKey(key);
+                SwapKey(key); // REF and ALD is swapped in the key
                 if(mapLDKey2Pos.count(key) == 0){
                     ns_total++;
                     continue;
                 }else{
                     z_i = -z_i;
                     beta_i = -beta_i;
+                    tmp_major = major;
+                    major = minor;
+                    minor = tmp_major;
                 }
             }
 
