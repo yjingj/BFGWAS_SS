@@ -18,6 +18,7 @@ if(length(args)==0) {
 
 ##############
 sig_level = as.numeric(sig_level)
+# sig_level=5e-8
 yRedLine <- -log10(sig_level)
 break.top=20;
 pngwidth <- 12800
@@ -26,10 +27,15 @@ plotRedLine <- TRUE;
 top.size = 0.3
 #paramFile="/home/jyang/ResearchProjects/BFGWAS_QUANT_Test/Test_wkdir_AD/Eoutput/paramtemp3.txt"
 #out_prefix="/home/jyang/ResearchProjects/BFGWAS_QUANT_Test/AnalyzeResults/AD"
+#out_prefix="/mnt/YangFSS/data2/jyang/test_BFGWAS/test_AD"
 
 ############# Load gwas data 
 if(!file.exists(paramFile)) stop("Error: Input file not found")
 file_out <- paste0(out_prefix, "_mp.png")
+print("Load BFGWAS Results from:")
+print(paramFile)
+print("Make Manhanttan Plot : ")
+print(file_out)
 
 gwas <- fread(paramFile, sep = "\t", header = TRUE)
 setnames(gwas, c("CHR", "POS", "ID", "REF", "ALT", "MAF", "Anno", "Pi", "Beta", "mBeta", "Chisq", "Pval", "Rank"))
@@ -150,9 +156,9 @@ par(mar=c(5.1, 5.1, 2.1, 3.5), mgp = c(3, 0.7, 0), las=1)
         gwas_sub1_top = gwas_man[gwas_man$pi > 0.5 & gwas_man$mlog10_pval>= break.top, ]
         gwas_sub1_bottom = gwas_man[gwas_man$pi > 0.5 & gwas_man$mlog10_pval < break.top, ]
         points(gwas_sub1_top$plotPos, rescale(gwas_sub1_top$mlog10_pval),
-                    pch=gwas_sub1_top$pch, col=gwas_sub1_top$pipColor, cex=1.2)
+                    pch=17, col=gwas_sub1_top$pipColor, cex=1.2)
         points(gwas_sub1_bottom$plotPos, gwas_sub1_bottom$mlog10_pval,
-                    pch=gwas_sub1_bottom$pch, col=gwas_sub1_bottom$pipColor, cex=1.2)
+                    pch=17, col=gwas_sub1_bottom$pipColor, cex=1.2)
 
         # add axes and axis labels
         if(length(chrs) > 1) {
@@ -203,9 +209,12 @@ par(mar=c(5.1, 5.1, 2.1, 3.5), mgp = c(3, 0.7, 0), las=1)
                     pch=gwas_sub1$pch, col=gwas_sub1$pipColor, cex=1.2)
         gwas_sub1 = gwas_man[gwas_man$pi > 0.5, ]
         points(gwas_sub1$plotPos, gwas_sub1$mlog10_pval,
-                    pch=gwas_sub1$pch, col=gwas_sub1$pipColor, cex=1.2)
+                    pch=17, col=gwas_sub1$pipColor, cex=1.2)
         if(plotRedLine) abline(h=yRedLine,lwd=1.5,col="magenta",lty=2)
     }
+
+legend("topleft", legend = "CPP>0.5", pch = 17, col = rbPal(10)[6], cex = 1.2, pt.cex = 1.2)
+
 cpp = round(seq(0.1068, 1, length.out = 10), 2)
 par(mar=c(5.1, 5.1, 2.1, 4.1), mgp = c(2, 2, 2), las=1)
 legend.col(col = rbPal(10), lev = cpp)

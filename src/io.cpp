@@ -2434,6 +2434,12 @@ bool ReadFile_score(const string &file_score, vector<SNPPOS> &snp_pos, map<strin
                 if( pch[0] != 'N' )
                		{
                         z_i = strtod(pch, NULL);
+                        if(std::isinf(z_i)){
+                            if(z_i > 0)
+                                z_i = std::numeric_limits<double>::max();
+                            else
+                                z_i = -std::numeric_limits<double>::max();
+                        }
                         beta_i = z_i / sqrt((double)ni_test) ;
                         chisq_i = z_i * z_i;
                         p_score = gsl_cdf_chisq_Q(chisq_i, 1);
