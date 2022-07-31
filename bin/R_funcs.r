@@ -70,7 +70,7 @@ CItable <- function(v, n_type, alpha, funcgroup=NA){
 PlotCI_groupPP <- function(hyp_table, pdfname="", size = 28, tit="", wid=10, scale = TRUE){
 
     p = ggplot(hyp_table, aes(y=pi, x = funcgroup, colour=funcgroup)) + 
-        geom_point(size = 4)+ guides (colour=FALSE) + 
+        geom_point(size = 4)+ guides (colour="none") +
         geom_errorbar(aes(ymax=pi_ucl, ymin=pi_lcl), width=0.5, size = 1.5) + 
         labs(title = tit, x = NULL, y = "Causal Probability") + 
         theme_grey(base_size = size) + 
@@ -85,7 +85,7 @@ PlotCI_groupPP <- function(hyp_table, pdfname="", size = 28, tit="", wid=10, sca
 PlotCI_groupESvar <- function(hyp_table = AMDgwas_CI_table, pdfname="", size = 14, tit = "", gwas_n = 1000, wid=10, scale = TRUE){
 
     p = ggplot(hyp_table, aes(y = (1/tau)/gwas_n, x = funcgroup, colour=funcgroup)) +
-        geom_point(size = 4)+ guides (colour=FALSE) + 
+        geom_point(size = 4)+ guides (colour="none") +
         geom_errorbar(aes(ymin = (1/tau_ucl)/gwas_n, ymax = (1/tau_lcl)/gwas_n ), width=0.5, size = 1.5) +
         labs(title = tit, x = NULL, y = "Effect-size Variance") + 
         theme_grey(base_size = size) + 
@@ -133,13 +133,13 @@ PlotRatio <- function(comp_dat, tit ="", pdfname = "", size = 28, ymode = 1, wid
         geom_point(size = 4) + 
         geom_errorbar(aes(ymax=log_ratio_ucl, ymin=log_ratio_lcl), width=0.5, 
                         size = 1.5) + 
-        guides(colour=FALSE) + 
+        guides(colour="none") +
         labs(title = tit, x = NULL, y = expression(paste(pi[q], "/", pi[avg])) ) + 
         theme_grey(base_size = size) +
         theme(text = element_text(size=size), axis.text.x = element_text(angle=30, hjust = 0.8), plot.margin=unit(c(4,0,0,4),"pt"))
     }else{
         p = ggplot(comp_dat, aes(y=log_ratio, x = funcgroup, colour=funcgroup)) + 
-        geom_point(size=4) + guides(colour=FALSE) + 
+        geom_point(size=4) + guides(colour="none") +
         geom_errorbar(aes(ymax=log_ratio_ucl, ymin=log_ratio_lcl), width=0.5, 
                         size = 1.5) + 
         labs(title = tit, x = NULL, y = expression(paste(sigma[q] ^2, "/", sigma[avg] ^2))) +

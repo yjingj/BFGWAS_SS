@@ -2452,13 +2452,8 @@ bool ReadFile_score(const string &file_score, vector<SNPPOS> &snp_pos, map<strin
             } //  Z-SCORE
             //cout<<"run zscore"<<endl;
 
-            // fill in snp ID values and setup key
-            key = chr + ":" + to_string(b_pos) + ":" + major + ":" + minor;
-            if(rs.compare(".") == 0 || rs.empty() )
-                { rs = key; }
-            // cout<<key<<endl;
-
             // Exclude SNP if not present in LD file
+            key = chr + ":" + to_string(b_pos) + ":" + major + ":" + minor;
             if(mapLDKey2Pos.count(key) == 0){
                 SwapKey(key); // REF and ALD is swapped in the key
                 if(mapLDKey2Pos.count(key) == 0){
@@ -2472,6 +2467,11 @@ bool ReadFile_score(const string &file_score, vector<SNPPOS> &snp_pos, map<strin
                     minor = tmp_major;
                 }
             }
+
+            // fill in snp ID values and setup key
+            if(rs.compare(".") == 0 || rs.empty() )
+                { rs = key; }
+            // cout<<key<<endl;
 
             // record ns_test as the positions
             // only save test SNPs
