@@ -2436,9 +2436,9 @@ bool ReadFile_score(const string &file_score, vector<SNPPOS> &snp_pos, map<strin
                         z_i = strtod(pch, NULL);
                         if(std::isinf(z_i)){
                             if(z_i > 0)
-                                z_i = std::numeric_limits<double>::max();
+                                z_i = 40.87; // p-value = 1e-349
                             else
-                                z_i = -std::numeric_limits<double>::max();
+                                z_i = -39.84; // p-value = 1e-349
                         }
                         beta_i = z_i / sqrt((double)ni_test) ;
                         chisq_i = z_i * z_i;
