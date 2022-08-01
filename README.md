@@ -87,13 +87,13 @@ make
 Two prior parameters need to have initial values given in the hyper parameter file, e.g., `./1KG_example/ExData/InitValues6.txt`. 
 
 - First row of header starts with a `#` sign and each row represents the prior causal probability `pi` and a scale parameter for effect size variance `tau_beta` per annotation.
-- Default initial `pi` is recomend to set as `1e-7` for analyzing ~10M SNPs, or `1e-6` for analyzing ~1M SNPs, which will be updated in the M-step.
+- Default initial `pi` is recomend to set as `1e-6` for analyzing ~10M SNPs, or `1e-6` for analyzing ~1M SNPs, which will be updated in the M-step.
 - Default `tau_beta` is recomend to set as `1`, which will not be updated in the M-step. The magnitude of Bayesian effect size estimates are recomended to be set at about the same magnitude as marginal effect sizes. A larger `tau` value will shrink Bayesian effect size estimates more towards `0`.
 
 | #pi    | tau_beta   | 
 | ----------|:-------------:| 
-| 1e-7    | 1 | 
-| 1e-7    | 1 |  
+| 1e-6    | 1 | 
+| 1e-6    | 1 |  
 |...	| ... |  
 
 
