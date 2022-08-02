@@ -11,6 +11,7 @@ Building
 To compile, from the top level directory, type: "make"
 To compile with debug symbols, type: "make debug"
 To test (after compiling), from the top level directory, type: "make test"
+To clean all make steps, from the top level directory, type : "make clean"
 
 Under the main statgen repository, there are: 
 * bam - library code for operating on bam files.
