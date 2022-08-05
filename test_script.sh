@@ -4,8 +4,8 @@
 #########################################################
 
 # Specify BFGWAS tool directory and working directory with writing access
-BFGWAS_SS_dir="/home/jyang/GIT/BFGWAS_SS"
-wkdir="/home/jyang/GIT/BFGWAS_SS/1KG_example/Test_Wkdir"
+BFGWAS_SS_dir="/home/jyang51/YangLabData/Software/BFGWAS_SS"
+wkdir="/home/jyang51/YangLabData/Software/BFGWAS_SS/1KG_example/Test_Wkdir"
 # file with all genome block file name heads
 filehead=${BFGWAS_SS_dir}/1KG_example/ExData/fileheads_4region.txt
 # genotype directory
@@ -56,7 +56,12 @@ make -f ${wkdir}/BFGWAS.mk clean
 
 ######### Submit the job for running the makefile
 j=4 # Number of cores to request
-qsub -q b.q -j y -pe smp ${j} -wd ${wkdir} -N BFGWAS ${BFGWAS_SS_dir}/bin/run_make.sh --wkdir ${wkdir} --mkfile ${mkfile} --njob ${j}
+qsub -q b.q -j y -pe smp ${j} -wd ${wkdir} -N BFGWAS \
+	${BFGWAS_SS_dir}/bin/run_make.sh --wkdir ${wkdir} --mkfile ${mkfile} --njob ${j}
+
+
+/home/jyang51/YangLabData/Software/BFGWAS_SS/bin/Estep_mcmc -inputSS -Zscore /home/jyang51/YangLabData/Software/BFGWAS_SS/1KG_example/Test_Wkdir/Zscore/CFI_REGION_1KG.Zscore.txt.gz -LDcorr /home/jyang51/YangLabData/Software/BFGWAS_SS/1KG_example/Test_Wkdir/LDcorr/CFI_REGION_1KG.LDcorr.txt.gz -a /home/jyang51/YangLabData/Software/BFGWAS_SS/1KG_example/ExData/Annotations/Anno_CFI_REGION_1KG.txt.gz -fcode /home/jyang51/YangLabData/Software/BFGWAS_SS/1KG_example/ExData/AnnoCode6.txt -hfile /home/jyang51/YangLabData/Software/BFGWAS_SS/1KG_example/Test_Wkdir/hypval.current -maf 0.001 -n 2540 -bvsrm -smin 0 -smax 5 -win 100 -o CFI_REGION_1KG -w 10000 -s 10000 -seed 2022
+
 
 #########################################################
 #########  See example Rscript for Analyzing BFGWAS results

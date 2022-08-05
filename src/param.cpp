@@ -808,7 +808,7 @@ void PARAM::Convert_LD(){
                 }
             }
 	        idx_j = mapLDKey2Pos[key_j];
-            if( abs(idx_j - idx_i) >= LD_ref[ min(idx_i, idx_j) ].size() )
+            if( std::abs((int)(idx_j - idx_i)) >= LD_ref[ min(idx_i, idx_j) ].size() )
             	{ continue; }
             r2_ij = getR2_ij(LD_ref, idx_i, idx_j, swap_i, swap_j);
             if(refLD && (r2_ij < r2_level))

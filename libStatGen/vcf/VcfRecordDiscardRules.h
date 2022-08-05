@@ -19,7 +19,14 @@
 #define __VCF_RECORD_DISCARD_RULES_H__
 
 #include <vector>
+
+// added by jy for comilation bug with newer version gcc: ‘unordered_set’ in namespace ‘std’ does not name a template type
+#ifdef __GXX_EXPERIMENTAL_CXX0X__
+#include <unordered_set>
+#else
 #include <set>
+#endif
+
 #include <string>
 #include "VcfHeader.h"
 
@@ -51,14 +58,14 @@ public:
     /// in the passed in filename.
     /// Returns false, if the file could not be read.
     bool setExcludeIDs(const char* filename);
-    
+
     /// When reading records, keep only variants with the ids specified
     /// in the passed in filename.
     /// Returns false, if the file could not be read.
     bool setIncludeIDs(const char* filename);
     //@}
 
-    
+
     ///////////////////////
     /// @name  Check if a record should be kept.
     //@{
