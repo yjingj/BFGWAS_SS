@@ -355,13 +355,9 @@ void BVSRM::WriteParam_SS(vector<pair<double, double> > &beta_g, const vector<SN
                     outfile << "NA" << "\t";
                 }
             }
-            if (beta_g[i].second > 0.0) {
+            if (mapRank2Vec[r] & (beta_g[i].second > 0.0) ) {
                 pi_temp = beta_g[i].second/(double)s_step;
-                if(mapRank2Vec[r]){
-                    beta_mcmc[i] = gsl_vector_get(beta_hat, mapRank2Vec[r]);
-                }else{
-                    beta_mcmc[i] = 0.0;
-                }
+                beta_mcmc[i] = gsl_vector_get(beta_hat, mapRank2Vec[r]);
                 outfile << pi_temp << "\t" << beta_mcmc[i] << "\t" << mbeta[i]  << "\t" ;
                 for (size_t j=0; j < n_type; j++) {
                     if (snp_pos[i].indicator_func[j]) {
@@ -399,22 +395,9 @@ void BVSRM::WriteParam_SS(vector<pair<double, double> > &beta_g, const vector<SN
                     outfile << "NA" << "\t";
                 }
             }
-            if (beta_g[i].second > 0.0) {
-                pi_temp = beta_g[i].second/(double)s_step;
-                beta_mcmc[i] = beta_g[i].first/(double)s_step;
-                outfile << pi_temp << "\t" << beta_mcmc[i] << "\t" << mbeta[i]  << "\t" ;
-                for (size_t j=0; j < n_type; j++) {
-                    if (snp_pos[i].indicator_func[j]) {
-                        em_gamma[j] += pi_temp ;
-                        sumbeta2[j] += pi_temp * beta_mcmc[i] * beta_mcmc[i];
-                        break;
-                    }
-                }
-            }
-            else {
-                pi_temp = 0.0;
-                outfile << 0.0 << "\t" << 0.0 << "\t" << mbeta[i] << "\t";
-            }
+
+            pi_temp = 0.0;
+            outfile << 0.0 << "\t" << 0.0 << "\t" << mbeta[i] << "\t";
             outfile << scientific << setprecision(3) << pos_ChisqTest[r].second << "\t"<< pval[r] << "\t" ;
             outfile << r << endl;
         }
